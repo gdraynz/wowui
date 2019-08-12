@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Table, Grid, Button, Input } from "semantic-ui-react";
+import { Table, Grid, Button, Input, Icon } from "semantic-ui-react";
 
 const Store = window.require("electron-store");
 const addonStore = new Store();
@@ -16,46 +16,71 @@ const addonStore = new Store();
 // }
 
 const Addon = props => {
-    const [editing, setEditing] = useState(props.editing || false);
     const [loading, setLoading] = useState(false);
+    const refNew = useRef(props.new || false);
+    const refNeedUpdate = useRef(props.version ? false : true);
+    const refID = useRef(
+        props.id ||
+            Math.random()
+                .toString(36)
+                .substring(2, 15)
+    );
     const refName = useRef(props.name);
     const refURL = useRef(props.url);
     const refVersion = useRef(props.version);
 
-    const validate = editing => {
-        setEditing(false);
+    const id = refID.current;
+
+    const fetchInformations = () => {
+        refNew.current = false;
         setLoading(true);
         fetch(refURL.current)
             .then(response => response.text())
-            // Get name
             .then(html => {
-                const results = html.match(/<title>(?<name>[^:]*) .*<\/title>/);
+                let results = null;
+                // Get name
+                results = html.match(/<title>(?<name>[^:]*) .*<\/title>/);
                 refName.current = results.groups.name.trim();
-                return html;
-            })
-            // Get version
-            .then(html => {
-                const results = html.match(
+                // Get version
+                results = html.match(
                     /<div id="version">Version: (?<version>[\w.]+)<\/div>/
                 );
                 refVersion.current = results.groups.version;
-                return html;
+                if (refVersion.current !== props.version) {
+                    refNeedUpdate.current = true;
+                }
             })
-            .then(() => setLoading(false))
-            .then(() =>
-                props.addAddon({
+            .then(() => {
+                addonStore.set(id, {
+                    id: id,
                     name: refName.current,
                     url: refURL.current,
-                    version: refVersion.current
-                })
-            )
+                    version: props.version
+                });
+                setLoading(false);
+            })
             .catch(err => {
                 console.log(err);
                 setLoading(false);
             });
     };
 
-    const urlField = editing ? (
+    const install = () => {
+        refNeedUpdate.current = false;
+        // refVersion.current = "1.0.0";
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+            addonStore.set(id, {
+                id: id,
+                name: refName.current,
+                url: refURL.current,
+                version: refVersion.current
+            });
+        }, 1000);
+    };
+
+    const urlField = refNew.current ? (
         <Input
             fluid
             placeholder="URL"
@@ -68,28 +93,66 @@ const Addon = props => {
         </a>
     );
 
+    const installButton = refNew.current ? (
+        // Setup URL
+        <Button
+            color="green"
+            icon="check"
+            loading={loading}
+            disabled={loading}
+            onClick={() => fetchInformations()}
+        />
+    ) : refNeedUpdate.current ? (
+        !props.version ? (
+            // First install
+            <Button
+                color="green"
+                icon="download"
+                loading={loading}
+                disabled={loading}
+                onClick={() => install()}
+            />
+        ) : (
+            // Update available
+            <Button
+                color="green"
+                loading={loading}
+                disabled={loading}
+                onClick={() => install()}
+            >
+                <Icon name="download" />
+                {props.version + " -> " + refVersion.current}
+            </Button>
+        )
+    ) : (
+        // Check for updates
+        <Button
+            color="blue"
+            loading={loading}
+            disabled={loading}
+            onClick={() => fetchInformations()}
+        >
+            <Icon name="refresh" />
+            {refVersion.current}
+        </Button>
+    );
+
     return (
         <Table.Row>
             <Table.Cell collapsing>
                 <Button
                     color="red"
                     icon="trash alternate"
-                    onClick={() => props.removeAddon(refName.current)}
+                    onClick={() => {
+                        console.log(id);
+                        addonStore.delete(id);
+                    }}
                 />
             </Table.Cell>
             <Table.Cell collapsing>{refName.current}</Table.Cell>
             <Table.Cell>{urlField}</Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {refVersion.current}
-            </Table.Cell>
-            <Table.Cell collapsing>
-                <Button
-                    color={editing ? "green" : "blue"}
-                    icon={editing ? "check" : "edit outline"}
-                    loading={loading}
-                    disabled={loading}
-                    onClick={() => (editing ? validate() : setEditing(true))}
-                />
+                {installButton}
             </Table.Cell>
         </Table.Row>
     );
@@ -101,14 +164,6 @@ const App = () => {
     addonStore.onDidAnyChange((newValue, oldValue) => {
         setAddons(Object.values(newValue));
     });
-
-    const addAddon = addon => {
-        addonStore.set(addon.name, addon);
-    };
-
-    const removeAddon = addonName => {
-        addonStore.delete(addonName);
-    };
 
     useEffect(() => {
         setAddons(Object.values(addonStore.store));
@@ -123,20 +178,12 @@ const App = () => {
                             <Table.HeaderCell />
                             <Table.HeaderCell collapsing>Name</Table.HeaderCell>
                             <Table.HeaderCell>URL</Table.HeaderCell>
-                            <Table.HeaderCell collapsing>
-                                Version
-                            </Table.HeaderCell>
-                            <Table.HeaderCell />
+                            <Table.HeaderCell collapsing textAlign="center" />
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
-                        {addons.map((addon, i) => (
-                            <Addon
-                                key={addon.name || "unknown"}
-                                {...addon}
-                                addAddon={addAddon}
-                                removeAddon={removeAddon}
-                            />
+                        {addons.map(addon => (
+                            <Addon key={addon.id || "unknown"} {...addon} />
                         ))}
                     </Table.Body>
                     <Table.Footer>
@@ -156,10 +203,7 @@ const App = () => {
                                     color="blue"
                                     icon="plus"
                                     onClick={() => {
-                                        setAddons([
-                                            ...addons,
-                                            { editing: true }
-                                        ]);
+                                        setAddons([...addons, { new: true }]);
                                     }}
                                 />
                             </Table.HeaderCell>
