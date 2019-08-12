@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Table, Grid, Button, Input, Icon } from "semantic-ui-react";
 
+const AdmZip = window.require("adm-zip");
+
 const Store = window.require("electron-store");
 const addonStore = new Store();
 
@@ -37,15 +39,15 @@ const Addon = props => {
         fetch(refURL.current)
             .then(response => response.text())
             .then(html => {
-                let results = null;
+                let match = null;
                 // Get name
-                results = html.match(/<title>(?<name>[^:]*) .*<\/title>/);
-                refName.current = results.groups.name.trim();
+                match = html.match(/<title>(?<name>[^:]*) .*<\/title>/);
+                refName.current = match.groups.name.trim();
                 // Get version
-                results = html.match(
+                match = html.match(
                     /<div id="version">Version: (?<version>[\w.]+)<\/div>/
                 );
-                refVersion.current = results.groups.version;
+                refVersion.current = match.groups.version;
                 if (refVersion.current !== props.version) {
                     refNeedUpdate.current = true;
                 }
@@ -65,19 +67,47 @@ const Addon = props => {
             });
     };
 
-    const install = () => {
-        refNeedUpdate.current = false;
-        // refVersion.current = "1.0.0";
+    const install = async () => {
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            addonStore.set(id, {
-                id: id,
-                name: refName.current,
-                url: refURL.current,
-                version: refVersion.current
-            });
-        }, 1000);
+        // Get URL domain
+        let match = refURL.current.match(/(?<domain>https:\/\/[\w.]+)\/.*/);
+        const domain = match.groups.domain;
+
+        // Get download page
+        let response = await fetch(refURL.current);
+        let html = await response.text();
+        match = html.match(
+            /<a href="(?<path>\/downloads\/[\w-]+)">Download<\/a>/
+        );
+        const downloadPage = domain + match.groups.path;
+
+        // Get download URL
+        response = await fetch(downloadPage);
+        html = await response.text();
+        match = html.match(
+            /(?<downloadUrl>https:\/\/cdn\.wowinterface\.com\/downloads\/.*\/(?<zipName>.*\.zip))/
+        );
+        const { downloadUrl, zipName } = match.groups;
+
+        // Download ZIP
+        console.log(downloadUrl);
+        response = await fetch(downloadUrl);
+        const zipData = await response.arrayBuffer();
+        console.log(zipData.byteLength);
+
+        let buf = Buffer.alloc(zipData.byteLength);
+        let view = new Uint8Array(zipData);
+        for (let i = 0; i < buf.length; ++i) {
+            buf[i] = view[i];
+        }
+
+        console.log(Buffer.isBuffer(buf));
+
+        const zip = new AdmZip(buf);
+        console.log(zip.getEntries());
+        // zip.extractAllTo("/tmp/addons/");
+
+        setLoading(false);
     };
 
     const urlField = refNew.current ? (
@@ -143,10 +173,7 @@ const Addon = props => {
                 <Button
                     color="red"
                     icon="trash alternate"
-                    onClick={() => {
-                        console.log(id);
-                        addonStore.delete(id);
-                    }}
+                    onClick={() => addonStore.delete(id)}
                 />
             </Table.Cell>
             <Table.Cell collapsing>{refName.current}</Table.Cell>
