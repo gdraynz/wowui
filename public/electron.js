@@ -1,6 +1,5 @@
-const electron = require("electron");
-const app = electron.app;
-const BrowserWindow = electron.BrowserWindow;
+const { app, BrowserWindow, ipcMain } = require("electron");
+const { download } = require("electron-dl");
 
 const path = require("path");
 const isDev = require("electron-is-dev");
@@ -21,6 +20,17 @@ function createWindow() {
             ? "http://localhost:3000"
             : `file://${path.join(__dirname, "../build/index.html")}`
     );
+
+    ipcMain.on("download", (event, info) => {
+        download(
+            BrowserWindow.getFocusedWindow(),
+            info.url,
+            info.properties
+        ).then(dl =>
+            mainWindow.webContents.send("download complete", dl.getSavePath())
+        );
+    });
+
     if (isDev) {
         // Open the DevTools.
         //BrowserWindow.addDevToolsExtension('<location to your react chrome extension>');

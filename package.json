@@ -5,8 +5,10 @@
     "homepage": "./",
     "main": "public/electron.js",
     "dependencies": {
+        "electron-dl": "^1.14.0",
         "electron-is-dev": "^1.1.0",
         "electron-store": "^4.0.0",
+        "extract-zip": "^1.6.7",
         "lodash": "^4.17.15",
         "react": "^16.9.0",
         "react-dom": "^16.9.0",

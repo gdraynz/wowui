@@ -2,135 +2,97 @@ import React, { useState, useRef, useEffect } from "react";
 import { Table, Grid, Button, Input, Icon, Dropdown } from "semantic-ui-react";
 import _ from "lodash";
 
+const ipcRenderer = window.require("electron").ipcRenderer;
+const fs = window.require("fs");
+const extract = window.require("extract-zip");
+
 const Store = window.require("electron-store");
 const addonStore = new Store();
 
-// const fs = window.require("fs");
-
-// onClick={() =>
-//     fs.readdir("/tmp/addons", (err, files) => {
-//         if (err) {
-//             console.log("Unable to scan directory: " + err);
-//         }
-//         files.forEach(file => console.log(file));
-//     })
-// }
-
 const Addon = props => {
     const [loading, setLoading] = useState(false);
-    const refNew = useRef(props.new || false);
-    const refNeedUpdate = useRef(props.version ? false : true);
-    const refID = useRef(
-        props.id ||
-            Math.random()
-                .toString(36)
-                .substring(2, 15)
-    );
     const refName = useRef(props.name);
-    const refURL = useRef(props.url);
+    const refUrl = useRef(props.url);
     const refVersion = useRef(props.version);
+    const refAuthor = useRef(props.author);
+    const refDownloads = useRef(props.downloads);
+    const refMDownloads = useRef(props.mDownloads);
+    const [latestVersion, setLatestVersion] = useState(props.version);
 
-    const id = refID.current;
-
-    const fetchInformations = () => {
-        refNew.current = false;
+    useEffect(() => {
         setLoading(true);
-        fetch(refURL.current)
-            .then(response => response.text())
-            .then(html => {
-                let match = null;
-                // Get name
-                match = html.match(/<title>(?<name>[^:]*) .*<\/title>/);
-                refName.current = match.groups.name.trim();
-                // Get version
-                match = html.match(
-                    /<div id="version">Version: (?<version>[\w.]+)<\/div>/
-                );
-                refVersion.current = match.groups.version;
-                if (refVersion.current !== props.version) {
-                    refNeedUpdate.current = true;
-                }
+        fetch(
+            "https://api.mmoui.com/v3/game/WOW/filedetails/" +
+                props.id +
+                ".json"
+        )
+            .then(response => response.json())
+            .then(data => data[0])
+            .then(addon => {
+                refName.current = addon.UIName;
+                refUrl.current = addon.UIDownload;
+                refAuthor.current = addon.UIAuthorName;
+                refDownloads.current = addon.UIHitCount;
+                refMDownloads.current = addon.UIHitCountMonthly;
+                setLatestVersion(addon.UIVersion);
             })
             .then(() => {
-                addonStore.set(id, {
-                    id: id,
+                addonStore.set("addons." + props.id, {
+                    id: props.id,
                     name: refName.current,
-                    url: refURL.current,
-                    version: props.version
+                    downloadUrl: refUrl.current,
+                    version: refVersion.current,
+                    author: refAuthor.current,
+                    downloads: refDownloads.current,
+                    mDownloads: refMDownloads.current
                 });
-                setLoading(false);
             })
-            .catch(err => {
-                console.log(err);
+            .then(() => setLoading(false));
+    }, [props.id]);
+
+    const install = () => {
+        setLoading(true);
+        ipcRenderer.send("download", {
+            url: refUrl.current,
+            properties: { directory: addonStore.get("path") }
+        });
+        ipcRenderer.on("download complete", (event, file) => {
+            extract(file, { dir: addonStore.get("path") }, err => {
+                if (err) console.log(err);
+                // Cleanup zip file silently
+                setTimeout(() => {
+                    try {
+                        fs.unlinkSync(file);
+                    } catch (err) {}
+                }, 1000);
                 setLoading(false);
             });
+        });
     };
 
-    const install = async () => {
-        setLoading(true);
-
-        setLoading(false);
-    };
-
-    const urlField = refNew.current ? (
-        <Input
-            fluid
-            placeholder="URL"
-            defaultValue={refURL.current}
-            onChange={(e, data) => (refURL.current = data.value)}
-        />
-    ) : (
-        <a href={refURL.current} target="_blank" rel="noopener noreferrer">
-            {refURL.current}
-        </a>
-    );
-
-    const installButton = refNew.current ? (
-        // Setup URL
-        <Button
-            color="green"
-            icon="check"
-            loading={loading}
-            disabled={loading}
-            onClick={() => fetchInformations()}
-        />
-    ) : refNeedUpdate.current ? (
-        !props.version ? (
-            // First install
-            <Button
-                color="green"
-                icon="download"
-                loading={loading}
-                disabled={loading}
-                onClick={() => install()}
-            >
-                <Icon name="download" />
-                {refVersion.current}
-            </Button>
-        ) : (
+    const installButton =
+        latestVersion !== props.version ? (
             // Update available
             <Button
+                color="blue"
+                loading={loading}
+                disabled={loading}
+                onClick={() => install()}
+            >
+                <Icon name="download" />
+                {props.version + " -> " + latestVersion}
+            </Button>
+        ) : (
+            <Button
                 color="green"
                 loading={loading}
                 disabled={loading}
                 onClick={() => install()}
             >
                 <Icon name="download" />
-                {props.version + " -> " + refVersion.current}
+                {props.version}
             </Button>
-        )
-    ) : (
-        // Check for updates
-        <Button
-            color="blue"
-            loading={loading}
-            disabled={loading}
-            onClick={() => fetchInformations()}
-        >
-            <Icon name="refresh" />
-            {refVersion.current}
-        </Button>
-    );
+        );
 
     return (
         <Table.Row>
@@ -138,11 +100,19 @@ const Addon = props => {
                 <Button
                     color="red"
                     icon="trash alternate"
-                    onClick={() => addonStore.delete(id)}
+                    onClick={() => addonStore.delete("addons." + props.id)}
                 />
             </Table.Cell>
-            <Table.Cell collapsing>{refName.current}</Table.Cell>
-            <Table.Cell>{urlField}</Table.Cell>
+            <Table.Cell>{refName.current}</Table.Cell>
+            <Table.Cell collapsing textAlign="center">
+                {refAuthor.current}
+            </Table.Cell>
+            <Table.Cell collapsing textAlign="center">
+                {refDownloads.current}
+            </Table.Cell>
+            <Table.Cell collapsing textAlign="center">
+                {refMDownloads.current}
+            </Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 {installButton}
             </Table.Cell>
@@ -151,44 +121,47 @@ const Addon = props => {
 };
 
 const AddonSearch = props => {
-    const [addonList, setAddonList] = useState([]);
-    const refSearchQuery = useRef("");
+    const [loading, setLoading] = useState(false);
+    const { addonList, ...childProps } = props;
 
-    const handleSearchChange = (e, { searchQuery }) =>
-        (refSearchQuery.current = searchQuery);
+    const customSearch = (options, query) => {
+        if (query.length < 2) {
+            return [];
+        }
+        const re = new RegExp(_.escapeRegExp(query), "i");
+        return addonList.filter(item => re.test(item.text));
+    };
 
-    const webSearch = async () => {
+    const fetchAddon = async uid => {
+        setLoading(true);
         const response = await fetch(
-            "https://api.mmoui.com/v3/game/WOW/filelist.json"
+            "https://api.mmoui.com/v3/game/WOW/filedetails/" + uid + ".json"
         );
-        const data = await response.json();
-        setAddonList(
-            data.map(item => {
-                const re = new RegExp(
-                    _.escapeRegExp(refSearchQuery.current),
-                    "i"
-                );
-                if (re.test(item.UIName))
-                    return {
-                        key: item.UID,
-                        value: item.UIName,
-                        text: item.UIName
-                    };
-            })
-        );
+        let data = await response.json();
+        data = data[0];
+        addonStore.set("addons." + data.UID, {
+            id: data.UID,
+            name: data.UIName,
+            downloadUrl: data.UIDownload,
+            version: data.UIVersion,
+            author: data.UIAuthorName,
+            downloads: data.UIDownloadTotal,
+            mDownloads: data.UIDownloadMonthly
+        });
+        setLoading(false);
     };
 
     return (
         <Dropdown
             fluid
             selection
-            search={webSearch}
-            searchQuery={refSearchQuery.value}
-            onSearchChange={handleSearchChange}
+            options={[]}
+            search={customSearch}
+            loading={loading}
             minCharacters={2}
-            options={addonList}
             placeholder="Search addon"
-            {...props}
+            onChange={(_, { value }) => fetchAddon(value)}
+            {...childProps}
         />
     );
 };
@@ -198,26 +171,25 @@ const App = () => {
     const [addonList, setAddonList] = useState([]);
 
     addonStore.onDidAnyChange((newValue, oldValue) => {
-        setAddons(Object.values(newValue));
+        setAddons(Object.values(newValue.addons));
     });
 
     useEffect(() => {
-        setAddons(Object.values(addonStore.store));
-    }, []);
-
-    const refreshAddons = async () => {
+        setAddons(Object.values(addonStore.get("addons", {})));
         fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
             .then(response => response.json())
             .then(data =>
                 setAddonList(
                     data.map(item => ({
                         key: item.UID,
-                        value: item.UIName,
-                        text: item.UIName
+                        value: item.UID,
+                        text: item.UIName,
+                        description:
+                            "Monthly downloads: " + item.UIDownloadMonthly
                     }))
                 )
             );
-    };
+    }, []);
 
     return (
         <Grid centered style={{ marginTop: "5vh" }}>
@@ -227,41 +199,34 @@ const App = () => {
                     <Table.Header>
                         <Table.Row>
                             <Table.HeaderCell />
-                            <Table.HeaderCell collapsing>Name</Table.HeaderCell>
-                            <Table.HeaderCell>URL</Table.HeaderCell>
+                            <Table.HeaderCell>Name</Table.HeaderCell>
+                            <Table.HeaderCell collapsing textAlign="center">
+                                Author
+                            </Table.HeaderCell>
+                            <Table.HeaderCell collapsing textAlign="center">
+                                Total downloads
+                            </Table.HeaderCell>
+                            <Table.HeaderCell collapsing textAlign="center">
+                                Monthly downloads
+                            </Table.HeaderCell>
                             <Table.HeaderCell collapsing textAlign="center" />
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
                         {addons.map(addon => (
-                            <Addon key={addon.id || "unknown"} {...addon} />
+                            <Addon key={addon.id} {...addon} />
                         ))}
                     </Table.Body>
                     <Table.Footer>
                         <Table.Row>
                             <Table.HeaderCell colSpan={10}>
-                                <Button
-                                    floated="right"
-                                    color="red"
-                                    icon="delete"
-                                    onClick={() => {
-                                        addonStore.clear();
-                                        setAddons([]);
-                                    }}
-                                />
-                                <Button
-                                    floated="right"
-                                    color="blue"
-                                    icon="plus"
-                                    onClick={() => {
-                                        setAddons([...addons, { new: true }]);
-                                    }}
-                                />
-                                <Button
-                                    floated="right"
-                                    color="orange"
-                                    icon="refresh"
-                                    onClick={() => refreshAddons()}
+                                <Input
+                                    fluid
+                                    defaultValue={addonStore.get("path")}
+                                    placeholder="Path to WoW addons folder"
+                                    onChange={(e, { value }) =>
+                                        addonStore.set("path", value)
+                                    }
                                 />
                             </Table.HeaderCell>
                         </Table.Row>
