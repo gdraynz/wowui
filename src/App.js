@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Table, Grid, Button, Input, Icon } from "semantic-ui-react";
-
-const AdmZip = window.require("adm-zip");
+import { Table, Grid, Button, Input, Icon, Dropdown } from "semantic-ui-react";
+import _ from "lodash";
 
 const Store = window.require("electron-store");
 const addonStore = new Store();
@@ -69,43 +68,6 @@ const Addon = props => {
 
     const install = async () => {
         setLoading(true);
-        // Get URL domain
-        let match = refURL.current.match(/(?<domain>https:\/\/[\w.]+)\/.*/);
-        const domain = match.groups.domain;
-
-        // Get download page
-        let response = await fetch(refURL.current);
-        let html = await response.text();
-        match = html.match(
-            /<a href="(?<path>\/downloads\/[\w-]+)">Download<\/a>/
-        );
-        const downloadPage = domain + match.groups.path;
-
-        // Get download URL
-        response = await fetch(downloadPage);
-        html = await response.text();
-        match = html.match(
-            /(?<downloadUrl>https:\/\/cdn\.wowinterface\.com\/downloads\/.*\/(?<zipName>.*\.zip))/
-        );
-        const { downloadUrl, zipName } = match.groups;
-
-        // Download ZIP
-        console.log(downloadUrl);
-        response = await fetch(downloadUrl);
-        const zipData = await response.arrayBuffer();
-        console.log(zipData.byteLength);
-
-        let buf = Buffer.alloc(zipData.byteLength);
-        let view = new Uint8Array(zipData);
-        for (let i = 0; i < buf.length; ++i) {
-            buf[i] = view[i];
-        }
-
-        console.log(Buffer.isBuffer(buf));
-
-        const zip = new AdmZip(buf);
-        console.log(zip.getEntries());
-        // zip.extractAllTo("/tmp/addons/");
 
         setLoading(false);
     };
@@ -141,7 +103,10 @@ const Addon = props => {
                 loading={loading}
                 disabled={loading}
                 onClick={() => install()}
-            />
+            >
+                <Icon name="download" />
+                {refVersion.current}
+            </Button>
         ) : (
             // Update available
             <Button
@@ -185,8 +150,52 @@ const Addon = props => {
     );
 };
 
+const AddonSearch = props => {
+    const [addonList, setAddonList] = useState([]);
+    const refSearchQuery = useRef("");
+
+    const handleSearchChange = (e, { searchQuery }) =>
+        (refSearchQuery.current = searchQuery);
+
+    const webSearch = async () => {
+        const response = await fetch(
+            "https://api.mmoui.com/v3/game/WOW/filelist.json"
+        );
+        const data = await response.json();
+        setAddonList(
+            data.map(item => {
+                const re = new RegExp(
+                    _.escapeRegExp(refSearchQuery.current),
+                    "i"
+                );
+                if (re.test(item.UIName))
+                    return {
+                        key: item.UID,
+                        value: item.UIName,
+                        text: item.UIName
+                    };
+            })
+        );
+    };
+
+    return (
+        <Dropdown
+            fluid
+            selection
+            search={webSearch}
+            searchQuery={refSearchQuery.value}
+            onSearchChange={handleSearchChange}
+            minCharacters={2}
+            options={addonList}
+            placeholder="Search addon"
+            {...props}
+        />
+    );
+};
+
 const App = () => {
     const [addons, setAddons] = useState([]);
+    const [addonList, setAddonList] = useState([]);
 
     addonStore.onDidAnyChange((newValue, oldValue) => {
         setAddons(Object.values(newValue));
@@ -196,9 +205,24 @@ const App = () => {
         setAddons(Object.values(addonStore.store));
     }, []);
 
+    const refreshAddons = async () => {
+        fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
+            .then(response => response.json())
+            .then(data =>
+                setAddonList(
+                    data.map(item => ({
+                        key: item.UID,
+                        value: item.UIName,
+                        text: item.UIName
+                    }))
+                )
+            );
+    };
+
     return (
         <Grid centered style={{ marginTop: "5vh" }}>
             <Grid.Column width={14}>
+                <AddonSearch addonList={addonList} />
                 <Table selectable celled>
                     <Table.Header>
                         <Table.Row>
@@ -232,6 +256,12 @@ const App = () => {
                                     onClick={() => {
                                         setAddons([...addons, { new: true }]);
                                     }}
+                                />
+                                <Button
+                                    floated="right"
+                                    color="orange"
+                                    icon="refresh"
+                                    onClick={() => refreshAddons()}
                                 />
                             </Table.HeaderCell>
                         </Table.Row>
