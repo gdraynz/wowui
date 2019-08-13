@@ -179,9 +179,12 @@ const AddonSearch = props => {
 const App = () => {
     const [addons, setAddons] = useState([]);
     const [addonList, setAddonList] = useState([]);
+    const refPathTimeout = useRef(null);
+
+    // addonStore.clear();
 
     addonStore.onDidAnyChange((newValue, oldValue) => {
-        setAddons(Object.values(newValue.addons));
+        if (newValue.addons) setAddons(Object.values(newValue.addons));
     });
 
     useEffect(() => {
@@ -200,6 +203,15 @@ const App = () => {
                 )
             );
     }, []);
+
+    const updatePath = path => {
+        clearTimeout(refPathTimeout.current);
+        refPathTimeout.current = setTimeout(() => {
+            console.log(path);
+            addonStore.set("path", path);
+            refPathTimeout.current = null;
+        }, 500);
+    };
 
     return (
         <Grid centered style={{ marginTop: "5vh" }}>
@@ -235,7 +247,7 @@ const App = () => {
                                     defaultValue={addonStore.get("path")}
                                     placeholder="Path to WoW addons folder"
                                     onChange={(e, { value }) =>
-                                        addonStore.set("path", value)
+                                        updatePath(value)
                                     }
                                 />
                             </Table.HeaderCell>
