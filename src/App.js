@@ -65,6 +65,16 @@ const Addon = props => {
                         fs.unlinkSync(file);
                     } catch (err) {}
                 }, 1000);
+                refVersion.current = latestVersion;
+                addonStore.set("addons." + props.id, {
+                    id: props.id,
+                    name: refName.current,
+                    downloadUrl: refUrl.current,
+                    version: refVersion.current,
+                    author: refAuthor.current,
+                    downloads: refDownloads.current,
+                    mDownloads: refMDownloads.current
+                });
                 setLoading(false);
             });
         });
