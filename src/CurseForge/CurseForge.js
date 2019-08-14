@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Table, Button, Icon, Dropdown } from "semantic-ui-react";
+import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 
-import { AddonStore } from "./Store";
+import { AddonStore } from "../Store";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
@@ -19,7 +19,7 @@ const updateAddon = async id => {
 	);
 	let filesData = await response.json();
 	let fileData = filesData[0];
-	AddonStore.set("addons." + id, {
+	AddonStore.set("addons.cf." + id, {
 		id: id,
 		name: data.name,
 		summary: data.summary,
@@ -30,7 +30,7 @@ const updateAddon = async id => {
 	return fileData.id;
 };
 
-export const CFAddon = props => {
+const Addon = props => {
 	const [loading, setLoading] = useState(false);
 	const refName = useRef(props.name);
 	const refUrl = useRef(props.downloadUrl);
@@ -108,7 +108,7 @@ export const CFAddon = props => {
 				<Button
 					color="red"
 					icon="trash alternate"
-					onClick={() => AddonStore.delete("addons." + props.id)}
+					onClick={() => AddonStore.delete("addons.cf." + props.id)}
 				/>
 			</Table.Cell>
 			<Table.Cell collapsing>{refName.current}</Table.Cell>
@@ -123,7 +123,7 @@ export const CFAddon = props => {
 	);
 };
 
-export const CFAddonSearch = props => {
+const AddonSearch = props => {
 	const [loading, setLoading] = useState(false);
 	const refAddonList = useRef([]);
 	const refSearchTimeout = useRef(null);
@@ -171,5 +171,41 @@ export const CFAddonSearch = props => {
 			options={refAddonList.current}
 			onChange={(_, { value }) => updateAddon(value)}
 		/>
+	);
+};
+
+export const CFTab = props => {
+	const [addons, setAddons] = useState([]);
+
+	AddonStore.onDidChange("addons.cf", (newValue, oldValue) => {
+		if (newValue) setAddons(Object.values(newValue));
+	});
+
+	useEffect(() => {
+		setAddons(Object.values(AddonStore.get("addons.cf", {})));
+	}, []);
+
+	return (
+		<Tab.Pane {...props}>
+			<AddonSearch />
+			<Table selectable celled>
+				<Table.Header>
+					<Table.Row>
+						<Table.HeaderCell />
+						<Table.HeaderCell collapsing>Name</Table.HeaderCell>
+						<Table.HeaderCell>Summary</Table.HeaderCell>
+						<Table.HeaderCell collapsing textAlign="center">
+							Downloads
+						</Table.HeaderCell>
+						<Table.HeaderCell collapsing textAlign="center" />
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{addons.map(addon => (
+						<Addon key={addon.id} {...addon} />
+					))}
+				</Table.Body>
+			</Table>
+		</Tab.Pane>
 	);
 };

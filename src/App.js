@@ -1,37 +1,14 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Table, Grid, Input } from "semantic-ui-react";
+import React, { useRef } from "react";
+import { Grid, Input, Tab } from "semantic-ui-react";
 
 import { AddonStore } from "./Store";
-// import { WIAddonSearch, WIAddon } from "./WowInterface";
-import { CFAddonSearch, CFAddon } from "./CurseForge";
+import { CFTab } from "./CurseForge/CurseForge";
+import { WITab } from "./WowInterface/WowInterface";
 
 const App = () => {
-    const [addons, setAddons] = useState([]);
-    // const [addonList, setAddonList] = useState([]);
     const refPathTimeout = useRef(null);
 
     // AddonStore.clear();
-
-    AddonStore.onDidAnyChange((newValue, oldValue) => {
-        if (newValue.addons) setAddons(Object.values(newValue.addons));
-    });
-
-    useEffect(() => {
-        setAddons(Object.values(AddonStore.get("addons", {})));
-        // fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
-        //     .then(response => response.json())
-        //     .then(data =>
-        //         setAddonList(
-        //             data.map(item => ({
-        //                 key: item.UID,
-        //                 value: item.UID,
-        //                 text: item.UIName,
-        //                 description:
-        //                     "Monthly downloads: " + item.UIDownloadMonthly
-        //             }))
-        //         )
-        //     );
-    }, []);
 
     const updatePath = path => {
         clearTimeout(refPathTimeout.current);
@@ -41,42 +18,29 @@ const App = () => {
         }, 500);
     };
 
+    const panes = [
+        { menuItem: "Curse Forge", pane: <CFTab key="cf" /> },
+        { menuItem: "WoW Interface", pane: <WITab key="wi" /> }
+    ];
+
     return (
         <Grid centered style={{ marginTop: "5vh" }}>
             <Grid.Column width={14}>
-                <CFAddonSearch />
-                <Table selectable celled>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.HeaderCell />
-                            <Table.HeaderCell collapsing>Name</Table.HeaderCell>
-                            <Table.HeaderCell>Summary</Table.HeaderCell>
-                            <Table.HeaderCell collapsing textAlign="center">
-                                Downloads
-                            </Table.HeaderCell>
-                            <Table.HeaderCell collapsing textAlign="center" />
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {addons.map(addon => (
-                            <CFAddon key={addon.id} {...addon} />
-                        ))}
-                    </Table.Body>
-                    <Table.Footer>
-                        <Table.Row>
-                            <Table.HeaderCell colSpan={10}>
-                                <Input
-                                    fluid
-                                    defaultValue={AddonStore.get("path")}
-                                    placeholder="Path to WoW addons folder"
-                                    onChange={(e, { value }) =>
-                                        updatePath(value)
-                                    }
-                                />
-                            </Table.HeaderCell>
-                        </Table.Row>
-                    </Table.Footer>
-                </Table>
+                <Grid.Row>
+                    <Tab
+                        renderActiveOnly={false}
+                        menu={{ secondary: true, pointing: true }}
+                        panes={panes}
+                    />
+                </Grid.Row>
+                <Grid.Row>
+                    <Input
+                        fluid
+                        defaultValue={AddonStore.get("path")}
+                        placeholder="Path to WoW addons folder"
+                        onChange={(e, { value }) => updatePath(value)}
+                    />
+                </Grid.Row>
             </Grid.Column>
         </Grid>
     );
