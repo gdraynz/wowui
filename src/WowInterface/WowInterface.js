@@ -27,11 +27,7 @@ const updateAddon = async (id, currentVersion) => {
 
 const Addon = props => {
 	const [loading, setLoading] = useState(false);
-	const refName = useRef(props.name);
-	const refUrl = useRef(props.url);
 	const refVersion = useRef(props.version);
-	const refAuthor = useRef(props.author);
-	const refDownloads = useRef(props.downloads);
 	const refLatestVersion = useRef(props.version);
 
 	useEffect(() => {
@@ -45,7 +41,7 @@ const Addon = props => {
 	const install = () => {
 		setLoading(true);
 		ipcRenderer.send("download", {
-			url: refUrl.current,
+			url: props.downloadUrl,
 			properties: { directory: AddonStore.get("path") }
 		});
 		ipcRenderer.on("download complete", (event, file) => {
@@ -55,16 +51,18 @@ const Addon = props => {
 				setTimeout(() => {
 					try {
 						fs.unlinkSync(file);
-					} catch (err) {}
+					} catch (err) {
+						console.log(err);
+					}
 				}, 1000);
 				refVersion.current = refLatestVersion.current;
 				AddonStore.set("addons.wi." + props.id, {
 					id: props.id,
-					name: refName.current,
-					downloadUrl: refUrl.current,
+					name: props.name,
+					downloadUrl: props.downloadUrl,
 					version: refVersion.current,
-					author: refAuthor.current,
-					downloads: refDownloads.current
+					author: props.author,
+					downloads: props.downloads
 				});
 				setLoading(false);
 			});
@@ -75,9 +73,9 @@ const Addon = props => {
 		refLatestVersion.current !== props.version ? (
 			// Update available
 			<Button
-				color="blue"
+				color="green"
 				loading={loading}
-				disabled={loading}
+				disabled={loading || props.downloadUrl === null}
 				onClick={() => install()}
 			>
 				<Icon name="download" />
@@ -85,7 +83,7 @@ const Addon = props => {
 			</Button>
 		) : (
 			<Button
-				color="green"
+				color="blue"
 				loading={loading}
 				disabled={loading}
 				onClick={() => install()}
@@ -104,12 +102,12 @@ const Addon = props => {
 					onClick={() => AddonStore.delete("addons.wi." + props.id)}
 				/>
 			</Table.Cell>
-			<Table.Cell>{refName.current}</Table.Cell>
+			<Table.Cell>{props.name}</Table.Cell>
 			<Table.Cell collapsing textAlign="center">
-				{refAuthor.current}
+				{props.author}
 			</Table.Cell>
 			<Table.Cell collapsing textAlign="center">
-				{refDownloads.current}
+				{props.downloads}
 			</Table.Cell>
 			<Table.Cell collapsing textAlign="center">
 				{installButton}

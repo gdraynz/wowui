@@ -15,6 +15,7 @@ function createWindow() {
             webSecurity: false
         }
     });
+    mainWindow.setMenuBarVisibility(false);
     mainWindow.loadURL(
         isDev
             ? "http://localhost:3000"

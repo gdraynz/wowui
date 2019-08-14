@@ -7,50 +7,45 @@ const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
 const extract = window.require("extract-zip");
 
-const updateAddon = async id => {
-	// Fetch addon infos
-	let response = await fetch(
+/*
+Unofficial twitch api doc:
+	https://twitchappapi.docs.apiary.io
+*/
+
+const updateAddon = async (id, currentVersion) => {
+	const response = await fetch(
 		"https://addons-ecs.forgesvc.net/api/v2/addon/" + id
 	);
-	let data = await response.json();
-	// Fetch addon file infos
-	response = await fetch(
-		"https://addons-ecs.forgesvc.net/api/v2/addon/" + id + "/files"
-	);
-	let filesData = await response.json();
-	let fileData = filesData[0];
+	const data = await response.json();
+	const latestFile = data.latestFiles[0] || {};
 	AddonStore.set("addons.cf." + id, {
 		id: id,
 		name: data.name,
 		summary: data.summary,
-		version: fileData.id,
-		downloadUrl: fileData.downloadUrl,
+		version: currentVersion || latestFile.displayName,
+		downloadUrl: latestFile.downloadUrl,
 		downloadCount: data.downloadCount
 	});
-	return fileData.id;
+	return latestFile.displayName;
 };
 
 const Addon = props => {
 	const [loading, setLoading] = useState(false);
-	const refName = useRef(props.name);
-	const refUrl = useRef(props.downloadUrl);
 	const refVersion = useRef(props.version);
-	const refSummary = useRef(props.summary);
-	const refDownloads = useRef(props.downloadCount);
 	const refLatestVersion = useRef(props.version);
 
 	useEffect(() => {
 		setLoading(true);
-		updateAddon(props.id).then(v => {
+		updateAddon(props.id, props.version).then(v => {
 			refLatestVersion.current = v;
 			setLoading(false);
 		});
-	}, [props.id]);
+	}, [props.id, props.version]);
 
 	const install = () => {
 		setLoading(true);
 		ipcRenderer.send("download", {
-			url: refUrl.current,
+			url: props.downloadUrl,
 			properties: { directory: AddonStore.get("path") }
 		});
 		ipcRenderer.on("download complete", (event, file) => {
@@ -65,13 +60,13 @@ const Addon = props => {
 					}
 				}, 1000);
 				refVersion.current = refLatestVersion.current;
-				AddonStore.set("addons." + props.id, {
+				AddonStore.set("addons.cf." + props.id, {
 					id: props.id,
-					name: refName.current,
+					name: props.name,
 					version: refVersion.current,
-					summary: refSummary.current,
-					downloadUrl: refUrl.current,
-					downloadCount: refDownloads.current
+					summary: props.summary,
+					downloadUrl: props.downloadUrl,
+					downloadCount: props.downloadCount
 				});
 				setLoading(false);
 			});
@@ -82,9 +77,9 @@ const Addon = props => {
 		refLatestVersion.current !== props.version ? (
 			// Update available
 			<Button
-				color="blue"
+				color="green"
 				loading={loading}
-				disabled={loading}
+				disabled={loading || props.downloadUrl === null}
 				onClick={() => install()}
 			>
 				<Icon name="download" />
@@ -92,7 +87,7 @@ const Addon = props => {
 			</Button>
 		) : (
 			<Button
-				color="green"
+				color="blue"
 				loading={loading}
 				disabled={loading}
 				onClick={() => install()}
@@ -111,10 +106,10 @@ const Addon = props => {
 					onClick={() => AddonStore.delete("addons.cf." + props.id)}
 				/>
 			</Table.Cell>
-			<Table.Cell collapsing>{refName.current}</Table.Cell>
-			<Table.Cell>{refSummary.current}</Table.Cell>
+			<Table.Cell collapsing>{props.name}</Table.Cell>
+			<Table.Cell>{props.summary}</Table.Cell>
 			<Table.Cell collapsing textAlign="center">
-				{refDownloads.current}
+				{props.downloadCount}
 			</Table.Cell>
 			<Table.Cell collapsing textAlign="center">
 				{installButton}
@@ -129,10 +124,6 @@ const AddonSearch = props => {
 	const refSearchTimeout = useRef(null);
 
 	const customSearch = (e, { searchQuery }) => {
-		/*
-		Unofficial twitch api doc:
-			https://twitchappapi.docs.apiary.io
-		*/
 		if (searchQuery.length === 0) return;
 		if (refAddonList.current.length > 0 && searchQuery.length > 4) return;
 		setLoading(true);
@@ -169,7 +160,7 @@ const AddonSearch = props => {
 			loading={loading}
 			placeholder="Search addon"
 			options={refAddonList.current}
-			onChange={(_, { value }) => updateAddon(value)}
+			onChange={(_, { value }) => updateAddon(value, null)}
 		/>
 	);
 };

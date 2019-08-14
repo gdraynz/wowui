@@ -27,18 +27,18 @@ const App = () => {
         <Grid centered style={{ marginTop: "5vh" }}>
             <Grid.Column width={14}>
                 <Grid.Row>
-                    <Tab
-                        renderActiveOnly={false}
-                        menu={{ secondary: true, pointing: true }}
-                        panes={panes}
-                    />
-                </Grid.Row>
-                <Grid.Row>
                     <Input
                         fluid
                         defaultValue={AddonStore.get("path")}
                         placeholder="Path to WoW addons folder"
                         onChange={(e, { value }) => updatePath(value)}
+                    />
+                </Grid.Row>
+                <Grid.Row>
+                    <Tab
+                        renderActiveOnly={false}
+                        menu={{ secondary: true, pointing: true }}
+                        panes={panes}
                     />
                 </Grid.Row>
             </Grid.Column>
