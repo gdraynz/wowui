@@ -40,21 +40,19 @@ const Addon = props => {
 
 	const install = () => {
 		setLoading(true);
+		AddonStore.set("downloading", true);
 		ipcRenderer.send("download", {
 			url: props.downloadUrl,
 			properties: { directory: AddonStore.get("path") }
 		});
-		ipcRenderer.on("download complete", (event, file) => {
+		ipcRenderer.once("download complete", (event, file) => {
+			setLoading(true);
 			extract(file, { dir: AddonStore.get("path") }, err => {
 				if (err) console.log(err);
-				// Cleanup zip file silently
-				setTimeout(() => {
-					try {
-						fs.unlinkSync(file);
-					} catch (err) {
-						console.log(err);
-					}
-				}, 1000);
+				// Silently remove zip file
+				try {
+					fs.unlinkSync(file);
+				} catch (e) {}
 				refVersion.current = refLatestVersion.current;
 				AddonStore.set("addons.wi." + props.id, {
 					id: props.id,
@@ -64,6 +62,7 @@ const Addon = props => {
 					author: props.author,
 					downloads: props.downloads
 				});
+				AddonStore.set("downloading", false);
 				setLoading(false);
 			});
 		});
@@ -75,7 +74,11 @@ const Addon = props => {
 			<Button
 				color="green"
 				loading={loading}
-				disabled={loading || props.downloadUrl === null}
+				disabled={
+					props.downloadInProgress ||
+					loading ||
+					props.downloadUrl === null
+				}
 				onClick={() => install()}
 			>
 				<Icon name="download" />
@@ -85,7 +88,7 @@ const Addon = props => {
 			<Button
 				color="blue"
 				loading={loading}
-				disabled={loading}
+				disabled={props.downloadInProgress || loading}
 				onClick={() => install()}
 			>
 				<Icon name="download" />
@@ -151,17 +154,20 @@ const AddonSearch = props => {
 export const WITab = props => {
 	const [addons, setAddons] = useState([]);
 	const [addonList, setAddonList] = useState([]);
+	const [downloadInProgress, setDownloadInProgress] = useState(false);
 	const refTimer = useRef(null);
 
-	AddonStore.onDidChange("addons.wi", (newValue, oldValue) => {
-		clearTimeout(refTimer.current);
-		refTimer.current = setTimeout(() => {
-			if (newValue) setAddons(Object.values(newValue));
-			refTimer.current = null;
-		}, 100);
-	});
-
 	useEffect(() => {
+		AddonStore.onDidChange("addons.wi", (newValue, oldValue) => {
+			clearTimeout(refTimer.current);
+			refTimer.current = setTimeout(() => {
+				if (newValue) setAddons(Object.values(newValue));
+				refTimer.current = null;
+			}, 100);
+		});
+		AddonStore.onDidChange("downloading", (newValue, oldValue) => {
+			setDownloadInProgress(newValue);
+		});
 		setAddons(Object.values(AddonStore.get("addons.wi", {})));
 		fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
 			.then(response => response.json())
@@ -193,7 +199,11 @@ export const WITab = props => {
 				</Table.Header>
 				<Table.Body>
 					{addons.map(addon => (
-						<Addon key={addon.id} {...addon} />
+						<Addon
+							key={addon.id}
+							{...addon}
+							downloadInProgress={downloadInProgress}
+						/>
 					))}
 				</Table.Body>
 			</Table>

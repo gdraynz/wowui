@@ -8,8 +8,8 @@ let mainWindow;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 900,
-        height: 680,
+        width: 1024,
+        height: 768,
         webPreferences: {
             nodeIntegration: true,
             webSecurity: false
@@ -23,13 +23,9 @@ function createWindow() {
     );
 
     ipcMain.on("download", (event, info) => {
-        download(
-            BrowserWindow.getFocusedWindow(),
-            info.url,
-            info.properties
-        ).then(dl =>
-            mainWindow.webContents.send("download complete", dl.getSavePath())
-        );
+        download(mainWindow, info.url, info.properties).then(dl => {
+            mainWindow.webContents.send("download complete", dl.getSavePath());
+        });
     });
 
     if (isDev) {
