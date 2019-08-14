@@ -167,9 +167,14 @@ const AddonSearch = props => {
 
 export const CFTab = props => {
 	const [addons, setAddons] = useState([]);
+	const refTimer = useRef(null);
 
 	AddonStore.onDidChange("addons.cf", (newValue, oldValue) => {
-		if (newValue) setAddons(Object.values(newValue));
+		clearTimeout(refTimer.current);
+		refTimer.current = setTimeout(() => {
+			if (newValue) setAddons(Object.values(newValue));
+			refTimer.current = null;
+		}, 100);
 	});
 
 	useEffect(() => {
