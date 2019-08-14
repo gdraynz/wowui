@@ -147,6 +147,8 @@ const AddonSearch = props => {
 			minCharacters={2}
 			placeholder="Search addon"
 			onChange={(_, { value }) => fetchAddon(value)}
+			selectOnBlur={false}
+			selectOnNavigation={false}
 		/>
 	);
 };

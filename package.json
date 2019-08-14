@@ -1,6 +1,6 @@
 {
-    "name": "electron-addons",
-    "version": "0.1.0",
+    "name": "addonplz",
+    "version": "1.0.0",
     "private": true,
     "homepage": "./",
     "main": "public/electron.js",
@@ -48,8 +48,8 @@
         "url": "https://github.com/gdraynz"
     },
     "build": {
-        "appId": "com.gdraynz.ElectronAddons",
-        "productName": "ElectronAddons",
+        "appId": "com.gdraynz.addonplz",
+        "productName": "addonplz",
         "copyright": "Copyright © 2019 gdraynz",
         "win": {
             "target": "portable"

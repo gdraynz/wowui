@@ -164,6 +164,8 @@ const AddonSearch = props => {
 			placeholder="Search addon"
 			options={refAddonList.current}
 			onChange={(_, { value }) => updateAddon(value, null)}
+			selectOnBlur={false}
+			selectOnNavigation={false}
 		/>
 	);
 };
