@@ -2,6 +2,11 @@
 
 Shamelessly pulls data from multiple WoW addon websites to search and install addons easily.
 
+## TODO
+
+-   Dark theme
+-   Streamline curseforge/wowinterface tables
+
 ### dev
 
 ```
