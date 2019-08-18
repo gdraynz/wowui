@@ -1,15 +1,15 @@
 # addonplz
 
-## dev
+Shamelessly pulls data from multiple WoW addon websites to search and install addons easily.
+
+### dev
 
 ```
 yarn
 yarn electron-dev
 ```
 
-## package
-
-Requires `wine` for windows builds.
+### package
 
 ```
 yarn electron-pack
