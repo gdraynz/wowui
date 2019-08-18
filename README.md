@@ -1,4 +1,4 @@
-# addonplz
+# WoW addon installer
 
 Shamelessly pulls data from multiple WoW addon websites to search and install addons easily.
 

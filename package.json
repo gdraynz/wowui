@@ -1,5 +1,5 @@
 {
-    "name": "addonplz",
+    "name": "wowui",
     "version": "1.0.0",
     "private": true,
     "homepage": "./",
@@ -48,8 +48,8 @@
         "url": "https://github.com/gdraynz"
     },
     "build": {
-        "appId": "com.gdraynz.addonplz",
-        "productName": "addonplz",
+        "appId": "com.gdraynz.wowui",
+        "productName": "WoW addon installer",
         "copyright": "Copyright © 2019 gdraynz",
         "win": {
             "target": "portable"
