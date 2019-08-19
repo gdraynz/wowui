@@ -8,13 +8,15 @@ const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
 const extract = window.require("extract-zip");
 
+const STOREKEY = "addons.wowinterface";
+
 const updateAddon = async (id, currentVersion) => {
     const response = await fetch(
         "https://api.mmoui.com/v3/game/WOW/filedetails/" + id + ".json"
     );
     const data = await response.json();
     const addon = data[0];
-    AddonStore.set("addons.wi." + id, {
+    AddonStore.set(STOREKEY + "." + id, {
         id: id,
         name: addon.UIName,
         downloadUrl: addon.UIDownload,
@@ -40,7 +42,7 @@ const Addon = props => {
 
     const install = () => {
         setLoading(true);
-        AddonStore.set("downloading", true);
+        AddonStore.set("downloadInProgress", true);
         ipcRenderer.send("download", {
             url: props.downloadUrl,
             properties: { directory: AddonStore.get("path") }
@@ -54,7 +56,7 @@ const Addon = props => {
                     fs.unlinkSync(file);
                 } catch (e) {}
                 refVersion.current = refLatestVersion.current;
-                AddonStore.set("addons.wi." + props.id, {
+                AddonStore.set(STOREKEY + "." + props.id, {
                     id: props.id,
                     name: props.name,
                     downloadUrl: props.downloadUrl,
@@ -62,7 +64,7 @@ const Addon = props => {
                     author: props.author,
                     downloads: props.downloads
                 });
-                AddonStore.set("downloading", false);
+                AddonStore.set("downloadInProgress", false);
                 setLoading(false);
             });
         });
@@ -102,7 +104,7 @@ const Addon = props => {
                 <Button
                     color="red"
                     icon="trash alternate"
-                    onClick={() => AddonStore.delete("addons.wi." + props.id)}
+                    onClick={() => AddonStore.delete(STOREKEY + "." + props.id)}
                 />
             </Table.Cell>
             <Table.Cell>{props.name}</Table.Cell>
@@ -160,17 +162,17 @@ export const WITab = props => {
     const refTimer = useRef(null);
 
     useEffect(() => {
-        AddonStore.onDidChange("addons.wi", (newValue, oldValue) => {
+        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
                 if (newValue) setAddons(Object.values(newValue));
                 refTimer.current = null;
             }, 100);
         });
-        AddonStore.onDidChange("downloading", (newValue, oldValue) => {
+        AddonStore.onDidChange("downloadInProgress", (newValue, oldValue) => {
             setDownloadInProgress(newValue);
         });
-        setAddons(Object.values(AddonStore.get("addons.wi", {})));
+        setAddons(Object.values(AddonStore.get(STOREKEY, {})));
         fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
             .then(response => response.json())
             .then(data =>

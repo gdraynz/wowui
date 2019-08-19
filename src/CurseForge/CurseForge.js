@@ -7,6 +7,9 @@ const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
 const extract = window.require("extract-zip");
 
+const STOREKEY = "addons.curseforge";
+const GAMEVERSION = "1.13.2";
+
 /*
 Unofficial twitch api doc:
     https://twitchappapi.docs.apiary.io
@@ -17,14 +20,29 @@ const updateAddon = async (id, currentVersion) => {
         "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
     );
     const data = await response.json();
-    const latestFile = data.latestFiles[0] || {};
-    AddonStore.set("addons.cf." + id, {
+
+    // Pick only the latest file with the right game version
+    let latestFile = {};
+    const BreakException = {};
+    try {
+        data.latestFiles.forEach(file => {
+            file.gameVersion.forEach(version => {
+                if (version === GAMEVERSION) {
+                    latestFile = file;
+                    throw BreakException;
+                }
+            });
+        });
+    } catch (e) {}
+
+    AddonStore.set(STOREKEY + "." + id, {
         id: id,
         name: data.name,
         summary: data.summary,
         version: currentVersion || latestFile.displayName,
         downloadUrl: latestFile.downloadUrl,
-        downloadCount: data.downloadCount
+        downloadCount: data.downloadCount,
+        websiteUrl: data.websiteUrl
     });
     return latestFile.displayName;
 };
@@ -32,9 +50,13 @@ const updateAddon = async (id, currentVersion) => {
 const Addon = props => {
     const [loading, setLoading] = useState(false);
     const refVersion = useRef(props.version);
-    const refLatestVersion = useRef(props.version);
+    const refLatestVersion = useRef(null);
 
     useEffect(() => {
+        // Don't reload if not needed
+        if (props.version === refLatestVersion.current) {
+            return;
+        }
         setLoading(true);
         updateAddon(props.id, props.version).then(v => {
             refLatestVersion.current = v;
@@ -44,7 +66,7 @@ const Addon = props => {
 
     const install = () => {
         setLoading(true);
-        AddonStore.set("downloading", true);
+        AddonStore.set("downloadInProgress", true);
         ipcRenderer.send("download", {
             url: props.downloadUrl,
             properties: { directory: AddonStore.get("path") }
@@ -58,15 +80,16 @@ const Addon = props => {
                     fs.unlinkSync(file);
                 } catch (e) {}
                 refVersion.current = refLatestVersion.current;
-                AddonStore.set("addons.cf." + props.id, {
+                AddonStore.set(STOREKEY + "." + props.id, {
                     id: props.id,
                     name: props.name,
                     version: refVersion.current,
                     summary: props.summary,
                     downloadUrl: props.downloadUrl,
-                    downloadCount: props.downloadCount
+                    downloadCount: props.downloadCount,
+                    websiteUrl: props.websiteUrl
                 });
-                AddonStore.set("downloading", false);
+                AddonStore.set("downloadInProgress", false);
                 setLoading(false);
             });
         });
@@ -86,7 +109,7 @@ const Addon = props => {
                 onClick={() => install()}
             >
                 <Icon name="download" />
-                {props.version + " -> " + refLatestVersion.current}
+                {refLatestVersion.current}
             </Button>
         ) : (
             <Button
@@ -106,10 +129,19 @@ const Addon = props => {
                 <Button
                     color="red"
                     icon="trash alternate"
-                    onClick={() => AddonStore.delete("addons.cf." + props.id)}
+                    onClick={() => AddonStore.delete(STOREKEY + "." + props.id)}
                 />
             </Table.Cell>
-            <Table.Cell collapsing>{props.name}</Table.Cell>
+            <Table.Cell collapsing>
+                <a
+                    href={props.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <Icon name="linkify" />
+                    {props.name}
+                </a>
+            </Table.Cell>
             <Table.Cell>{props.summary}</Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 {props.downloadCount}
@@ -133,7 +165,9 @@ const AddonSearch = props => {
         clearTimeout(refSearchTimeout.current);
         refSearchTimeout.current = setTimeout(() => {
             fetch(
-                "https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=1&searchFilter=" +
+                "https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=1&gameVersion=" +
+                    GAMEVERSION +
+                    "&searchFilter=" +
                     searchQuery
             )
                 .then(response => response.json())
@@ -176,15 +210,15 @@ export const CFTab = props => {
     const refTimer = useRef(null);
 
     useEffect(() => {
-        setAddons(Object.values(AddonStore.get("addons.cf", {})));
-        AddonStore.onDidChange("addons.cf", (newValue, oldValue) => {
+        setAddons(Object.values(AddonStore.get(STOREKEY, {})));
+        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
                 if (newValue) setAddons(Object.values(newValue));
                 refTimer.current = null;
             }, 100);
         });
-        AddonStore.onDidChange("downloading", (newValue, oldValue) => {
+        AddonStore.onDidChange("downloadInProgress", (newValue, oldValue) => {
             setDownloadInProgress(newValue);
         });
     }, []);

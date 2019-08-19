@@ -4,10 +4,8 @@ Shamelessly pulls data from multiple WoW addon websites to search and install ad
 
 ## TODO
 
-- Dark theme
-- Links to addons and websites
-- Tukui/Elvui
-- Classic/retail switch
+-   Tukui/Elvui
+-   Classic/retail switch
 
 ### dev
 
