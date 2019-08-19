@@ -49,7 +49,7 @@
     },
     "build": {
         "appId": "com.gdraynz.wowui",
-        "productName": "WoW addon installer",
+        "productName": "wowui",
         "copyright": "Copyright © 2019 gdraynz",
         "win": {
             "target": "portable"
