@@ -1,14 +1,13 @@
 import React, { useRef } from "react";
-import { Grid, Input, Tab } from "semantic-ui-react";
+import { Grid, Input, Tab, Button } from "semantic-ui-react";
 
 import { AddonStore } from "./Store";
 import { CFTab } from "./CurseForge/CurseForge";
 import { WITab } from "./WowInterface/WowInterface";
+import { TukuiTab } from "./Tukui/Tukui";
 
 const App = () => {
     const refPathTimeout = useRef(null);
-
-    // AddonStore.clear();
 
     const updatePath = path => {
         clearTimeout(refPathTimeout.current);
@@ -20,11 +19,12 @@ const App = () => {
 
     const panes = [
         { menuItem: "Curse Forge", pane: <CFTab key="cf" /> },
-        { menuItem: "WoW Interface", pane: <WITab key="wi" /> }
+        { menuItem: "WoW Interface", pane: <WITab key="wi" /> },
+        { menuItem: "Tukui", pane: <TukuiTab key="tukui" /> }
     ];
 
     return (
-        <Grid centered style={{ marginTop: "5vh" }}>
+        <Grid centered style={{ marginTop: "2vh" }}>
             <Grid.Column width={14}>
                 <Grid.Row>
                     <Input
@@ -33,8 +33,12 @@ const App = () => {
                         placeholder="Path to WoW addons folder"
                         onChange={(e, { value }) => updatePath(value)}
                     />
+                    <Input
+                        floated="right"
+                        as={() => <Button icon="folder" />}
+                    />
                 </Grid.Row>
-                <Grid.Row>
+                <Grid.Row style={{ marginTop: "2vh" }}>
                     <Tab
                         renderActiveOnly={false}
                         menu={{ secondary: true, pointing: true }}
