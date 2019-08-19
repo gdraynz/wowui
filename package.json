@@ -12,7 +12,7 @@
         "lodash": "^4.17.15",
         "react": "^16.9.0",
         "react-dom": "^16.9.0",
-        "react-scripts": "3.1.0",
+        "react-scripts": "^3.1.1",
         "semantic-ui-css": "^2.4.1",
         "semantic-ui-react": "^0.87.3"
     },
@@ -36,7 +36,7 @@
         "not op_mini all"
     ],
     "devDependencies": {
-        "concurrently": "^4.1.1",
+        "concurrently": "^4.1.2",
         "electron": "^6.0.1",
         "electron-builder": "^21.2.0",
         "typescript": "^3.5.3",
