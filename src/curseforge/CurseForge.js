@@ -1,38 +1,62 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
-import _ from "lodash";
 
-import { AddonStore } from "../Store";
+import { AddonStore } from "../utils";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
 const extract = window.require("extract-zip");
 
-const STOREKEY = "addons.wowinterface";
+const STOREKEY = "addons.curseforge";
+const GAMEVERSION = "1.13.2";
+
+/*
+Unofficial twitch api doc:
+    https://twitchappapi.docs.apiary.io
+*/
 
 const updateAddon = async (id, currentVersion) => {
     const response = await fetch(
-        "https://api.mmoui.com/v3/game/WOW/filedetails/" + id + ".json"
+        "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
     );
     const data = await response.json();
-    const addon = data[0];
+
+    // Pick only the latest file with the right game version
+    let latestFile = {};
+    const BreakException = {};
+    try {
+        data.latestFiles.forEach(file => {
+            file.gameVersion.forEach(version => {
+                if (version === GAMEVERSION) {
+                    latestFile = file;
+                    throw BreakException;
+                }
+            });
+        });
+    } catch (e) {}
+
     AddonStore.set(STOREKEY + "." + id, {
         id: id,
-        name: addon.UIName,
-        downloadUrl: addon.UIDownload,
-        version: currentVersion || addon.UIVersion,
-        author: addon.UIAuthorName,
-        downloads: addon.UIHitCount
+        name: data.name,
+        summary: data.summary,
+        version: currentVersion || latestFile.displayName,
+        downloadUrl: latestFile.downloadUrl,
+        downloadCount: data.downloadCount,
+        websiteUrl: data.websiteUrl
     });
-    return addon.UIVersion;
+    return latestFile.displayName;
 };
 
 const Addon = props => {
     const [loading, setLoading] = useState(false);
     const refVersion = useRef(props.version);
-    const refLatestVersion = useRef(props.version);
+    const refLatestVersion = useRef(null);
 
     useEffect(() => {
+        // Don't reload if not needed
+        if (props.version === refLatestVersion.current) {
+            return;
+        }
         setLoading(true);
         updateAddon(props.id, props.version).then(v => {
             refLatestVersion.current = v;
@@ -80,7 +104,7 @@ const Addon = props => {
                 onClick={() => install()}
             >
                 <Icon name="download" />
-                {props.version + " -> " + refLatestVersion.current}
+                {refLatestVersion.current}
             </Button>
         ) : (
             <Button
@@ -103,12 +127,19 @@ const Addon = props => {
                     onClick={() => AddonStore.delete(STOREKEY + "." + props.id)}
                 />
             </Table.Cell>
-            <Table.Cell>{props.name}</Table.Cell>
-            <Table.Cell collapsing textAlign="center">
-                {props.author}
+            <Table.Cell collapsing>
+                <a
+                    href={props.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <Icon name="external alternate" />
+                    {props.name}
+                </a>
             </Table.Cell>
+            <Table.Cell>{props.summary}</Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {props.downloads}
+                {props.downloadCount}
             </Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 {installButton}
@@ -119,45 +150,62 @@ const Addon = props => {
 
 const AddonSearch = props => {
     const [loading, setLoading] = useState(false);
+    const refAddonList = useRef([]);
+    const refSearchTimeout = useRef(null);
 
-    const customSearch = (options, query) => {
-        if (query.length < 2) {
-            return [];
-        }
-        const re = new RegExp(_.escapeRegExp(query), "i");
-        return props.addonList.filter(item => re.test(item.text));
-    };
-
-    const fetchAddon = id => {
+    const customSearch = (e, { searchQuery }) => {
+        if (searchQuery.length === 0) return;
+        if (refAddonList.current.length > 0 && searchQuery.length > 4) return;
         setLoading(true);
-        updateAddon(id, null).then(v => {
-            setLoading(false);
-        });
+        clearTimeout(refSearchTimeout.current);
+        refSearchTimeout.current = setTimeout(() => {
+            fetch(
+                "https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=1&gameVersion=" +
+                    GAMEVERSION +
+                    "&searchFilter=" +
+                    searchQuery
+            )
+                .then(response => response.json())
+                .then(
+                    data =>
+                        (refAddonList.current = data.map(addon => ({
+                            key: addon.id,
+                            value: addon.id,
+                            text: addon.name,
+                            description: addon.summary
+                        })))
+                )
+                .then(() => {
+                    clearTimeout(refSearchTimeout.current);
+                    refSearchTimeout.current = null;
+                    setLoading(false);
+                });
+        }, 500);
     };
 
     return (
         <Dropdown
             fluid
             selection
-            options={[]}
-            search={customSearch}
+            search
+            onSearchChange={customSearch}
             loading={loading}
-            minCharacters={2}
             placeholder="Search addon"
-            onChange={(_, { value }) => fetchAddon(value)}
+            options={refAddonList.current}
+            onChange={(_, { value }) => updateAddon(value, null)}
             selectOnBlur={false}
             selectOnNavigation={false}
         />
     );
 };
 
-export const WITab = props => {
+export const CFTab = props => {
     const [addons, setAddons] = useState([]);
-    const [addonList, setAddonList] = useState([]);
     const [downloadInProgress, setDownloadInProgress] = useState(false);
     const refTimer = useRef(null);
 
     useEffect(() => {
+        setAddons(Object.values(AddonStore.get(STOREKEY, {})));
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
@@ -168,29 +216,17 @@ export const WITab = props => {
         AddonStore.onDidChange("downloadInProgress", (newValue, oldValue) => {
             setDownloadInProgress(newValue);
         });
-        setAddons(Object.values(AddonStore.get(STOREKEY, {})));
-        fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
-            .then(response => response.json())
-            .then(data =>
-                setAddonList(
-                    data.map(item => ({
-                        key: item.UID,
-                        value: item.UID,
-                        text: item.UIName
-                    }))
-                )
-            );
     }, []);
 
     return (
         <Tab.Pane {...props}>
-            <AddonSearch addonList={addonList} />
+            <AddonSearch />
             <Table selectable celled>
                 <Table.Header>
                     <Table.Row>
                         <Table.HeaderCell />
-                        <Table.HeaderCell>Name</Table.HeaderCell>
-                        <Table.HeaderCell collapsing>Author</Table.HeaderCell>
+                        <Table.HeaderCell collapsing>Name</Table.HeaderCell>
+                        <Table.HeaderCell>Summary</Table.HeaderCell>
                         <Table.HeaderCell collapsing textAlign="center">
                             Downloads
                         </Table.HeaderCell>

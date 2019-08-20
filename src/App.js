@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Grid, Input, Tab, Button } from "semantic-ui-react";
 
-import { AddonStore } from "./Store";
-import { CFTab } from "./CurseForge/CurseForge";
-import { WITab } from "./WowInterface/WowInterface";
-// import { TukuiTab } from "./Tukui/Tukui";
+import { AddonStore } from "./utils";
+import { CFTab } from "./curseforge/CurseForge";
+import { WITab } from "./wowinterface/WowInterface";
+import { GithubTab } from "./github/Github";
 
 const { dialog } = window.require("electron").remote;
 
@@ -19,8 +19,8 @@ const App = () => {
                 menuItem: "Curse Forge (classic)",
                 pane: <CFTab key="curseforge" />
             },
-            { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> }
-            // { menuItem: "Tukui", pane: <TukuiTab key="tukui" /> }
+            { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> },
+            { menuItem: "Github", pane: <GithubTab key="github" /> }
         ];
 
     return (

@@ -6,6 +6,7 @@ Shamelessly pulls data from multiple WoW addon websites to search and install ad
 
 -   Tukui/Elvui
 -   Classic/retail switch
+-   Github tab
 
 ### dev
 
