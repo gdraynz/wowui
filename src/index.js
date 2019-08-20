@@ -7,7 +7,10 @@ const shell = window.require("electron").shell;
 
 // Open links externally by default
 document.addEventListener("click", event => {
-	if (event.target.tagName === "a" && event.target.href.startsWith("http")) {
+	if (
+		event.target.tagName.toLowerCase() === "a" &&
+		event.target.href.startsWith("http")
+	) {
 		event.preventDefault();
 		shell.openExternal(event.target.href);
 	}

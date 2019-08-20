@@ -56,14 +56,10 @@ const Addon = props => {
                     fs.unlinkSync(file);
                 } catch (e) {}
                 refVersion.current = refLatestVersion.current;
-                AddonStore.set(STOREKEY + "." + props.id, {
-                    id: props.id,
-                    name: props.name,
-                    downloadUrl: props.downloadUrl,
-                    version: refVersion.current,
-                    author: props.author,
-                    downloads: props.downloads
-                });
+                AddonStore.set(
+                    [STOREKEY, props.id, "version"].join("."),
+                    refVersion.current
+                );
                 AddonStore.set("downloadInProgress", false);
                 setLoading(false);
             });

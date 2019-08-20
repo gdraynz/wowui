@@ -80,15 +80,10 @@ const Addon = props => {
                     fs.unlinkSync(file);
                 } catch (e) {}
                 refVersion.current = refLatestVersion.current;
-                AddonStore.set(STOREKEY + "." + props.id, {
-                    id: props.id,
-                    name: props.name,
-                    version: refVersion.current,
-                    summary: props.summary,
-                    downloadUrl: props.downloadUrl,
-                    downloadCount: props.downloadCount,
-                    websiteUrl: props.websiteUrl
-                });
+                AddonStore.set(
+                    [STOREKEY, props.id, "version"].join("."),
+                    refVersion.current
+                );
                 AddonStore.set("downloadInProgress", false);
                 setLoading(false);
             });
@@ -138,7 +133,7 @@ const Addon = props => {
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <Icon name="linkify" />
+                    <Icon name="external alternate" />
                     {props.name}
                 </a>
             </Table.Cell>
