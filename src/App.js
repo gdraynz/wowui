@@ -1,15 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Grid, Input, Tab, Button } from "semantic-ui-react";
 
-import { AddonStore } from "./utils";
+import { AddonStore, NotifyDownloadFinished } from "./utils";
 import { CFTab } from "./curseforge/CurseForge";
 import { WITab } from "./wowinterface/WowInterface";
 import { GithubTab } from "./github/Github";
 
 const { dialog } = window.require("electron").remote;
+const ipcRenderer = window.require("electron").ipcRenderer;
 
 const App = () => {
     const [pathValue, setPathValue] = useState(AddonStore.get("path", ""));
+
+    useEffect(() => {
+        // Automatically set downloadInProgress as false at end of download
+        ipcRenderer.on("download complete", (event, info) => {
+            NotifyDownloadFinished();
+        });
+    }, []);
 
     // Hide tabs until a folder is selected
     let panes = [];
@@ -38,7 +46,7 @@ const App = () => {
                         </Grid.Column>
                         <Grid.Column>
                             <Button
-                                color={pathValue ? "" : "red"}
+                                color={pathValue ? "grey" : "red"}
                                 icon="folder"
                                 onClick={() => {
                                     const path = dialog.showOpenDialogSync({

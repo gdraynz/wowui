@@ -2,7 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
-import { AddonStore } from "../utils";
+import {
+    AddonStore,
+    OnDownloadInProgress,
+    NotifyDownloadStarted
+} from "../utils";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
@@ -42,14 +46,14 @@ const Addon = props => {
 
     const install = () => {
         setLoading(true);
-        AddonStore.set("downloadInProgress", true);
+        NotifyDownloadStarted();
+        const path = AddonStore.get("path");
         ipcRenderer.send("download", {
             url: props.downloadUrl,
-            properties: { directory: AddonStore.get("path") }
+            properties: { directory: path }
         });
         ipcRenderer.once("download complete", (event, file) => {
-            setLoading(true);
-            extract(file, { dir: AddonStore.get("path") }, err => {
+            extract(file, { dir: path }, err => {
                 if (err) console.log(err);
                 // Silently remove zip file
                 try {
@@ -60,7 +64,6 @@ const Addon = props => {
                     [STOREKEY, props.id, "version"].join("."),
                     refVersion.current
                 );
-                AddonStore.set("downloadInProgress", false);
                 setLoading(false);
             });
         });
@@ -158,15 +161,13 @@ export const WITab = props => {
     const refTimer = useRef(null);
 
     useEffect(() => {
+        OnDownloadInProgress(value => setDownloadInProgress(value));
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
                 if (newValue) setAddons(Object.values(newValue));
                 refTimer.current = null;
             }, 100);
-        });
-        AddonStore.onDidChange("downloadInProgress", (newValue, oldValue) => {
-            setDownloadInProgress(newValue);
         });
         setAddons(Object.values(AddonStore.get(STOREKEY, {})));
         fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")

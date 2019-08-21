@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 
-import { AddonStore } from "../utils";
+import {
+    AddonStore,
+    OnDownloadInProgress,
+    NotifyDownloadStarted
+} from "../utils";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
@@ -66,14 +70,14 @@ const Addon = props => {
 
     const install = () => {
         setLoading(true);
-        AddonStore.set("downloadInProgress", true);
+        NotifyDownloadStarted();
+        const path = AddonStore.get("path");
         ipcRenderer.send("download", {
             url: props.downloadUrl,
-            properties: { directory: AddonStore.get("path") }
+            properties: { directory: path }
         });
         ipcRenderer.once("download complete", (event, file) => {
-            setLoading(true);
-            extract(file, { dir: AddonStore.get("path") }, err => {
+            extract(file, { dir: path }, err => {
                 if (err) console.log(err);
                 // Silently remove zip file
                 try {
@@ -84,7 +88,6 @@ const Addon = props => {
                     [STOREKEY, props.id, "version"].join("."),
                     refVersion.current
                 );
-                AddonStore.set("downloadInProgress", false);
                 setLoading(false);
             });
         });
@@ -213,9 +216,7 @@ export const CFTab = props => {
                 refTimer.current = null;
             }, 100);
         });
-        AddonStore.onDidChange("downloadInProgress", (newValue, oldValue) => {
-            setDownloadInProgress(newValue);
-        });
+        OnDownloadInProgress(value => setDownloadInProgress(value));
     }, []);
 
     return (
