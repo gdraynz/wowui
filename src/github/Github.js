@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button, Tab, Input, Grid } from "semantic-ui-react";
 
-import {
-    AddonStore,
-    OnDownloadInProgress,
-    NotifyDownloadStarted,
-    useKeyPress
-} from "../utils";
+import { AddonStore, useKeyPress, InstallButton } from "../utils";
 
 const rimraf = window.require("rimraf");
 const ipcRenderer = window.require("electron").ipcRenderer;
@@ -16,8 +11,6 @@ const extract = window.require("extract-zip");
 const STOREKEY = "addons.github";
 
 const GithubLink = props => {
-    const [loading, setLoading] = useState(false);
-
     const getAddonPath = () => {
         const path = AddonStore.get("path");
         const parts = props.link.split("/");
@@ -25,29 +18,30 @@ const GithubLink = props => {
         return { path, addonPath };
     };
 
-    const install = () => {
-        setLoading(true);
-        NotifyDownloadStarted();
-        const { path, addonPath } = getAddonPath();
-        ipcRenderer.send("download", {
-            url: props.link + "/archive/master.zip",
-            properties: { directory: path }
+    const install = async () => {
+        const promise = new Promise(resolve => {
+            const { path, addonPath } = getAddonPath();
+            ipcRenderer.send("download", {
+                url: props.link + "/archive/master.zip",
+                properties: { directory: path }
+            });
+            ipcRenderer.once("download complete", (event, file) => {
+                // Remove old folder
+                rimraf(addonPath, () =>
+                    // Extract zip
+                    extract(file, { dir: path }, err => {
+                        if (err) console.log(err);
+                        // Cleanup
+                        fs.rename(addonPath + "-master", addonPath, e =>
+                            e ? console.log(e) : ""
+                        );
+                        fs.unlink(file, e => (e ? console.log(e) : ""));
+                        resolve();
+                    })
+                );
+            });
         });
-        ipcRenderer.once("download complete", (event, file) => {
-            // Remove old folder
-            rimraf(addonPath, () =>
-                // Extract zip
-                extract(file, { dir: path }, err => {
-                    if (err) console.log(err);
-                    // Cleanup
-                    fs.rename(addonPath + "-master", addonPath, e =>
-                        e ? console.log(e) : ""
-                    );
-                    fs.unlink(file, e => (e ? console.log(e) : ""));
-                    setLoading(false);
-                })
-            );
-        });
+        await promise;
     };
 
     return (
@@ -71,13 +65,11 @@ const GithubLink = props => {
                 <Input fluid disabled value={props.link} />
             </Grid.Column>
             <Grid.Column width={1}>
-                <Button
-                    disabled={props.downloadInProgress || loading}
-                    loading={loading}
+                <InstallButton
                     icon="download"
                     floated="right"
                     color="blue"
-                    onClick={() => install()}
+                    onClick={async () => await install()}
                 />
             </Grid.Column>
         </Grid.Row>
@@ -85,7 +77,6 @@ const GithubLink = props => {
 };
 
 export const GithubTab = props => {
-    const [downloadInProgress, setDownloadInProgress] = useState(false);
     const [links, setLinks] = useState([]);
     const [linkValue, setLinkValue] = useState("");
     const enterPressed = useKeyPress("Enter");
@@ -98,7 +89,6 @@ export const GithubTab = props => {
     }, [linkValue, links]);
 
     useEffect(() => {
-        OnDownloadInProgress(value => setDownloadInProgress(value));
         setLinks(AddonStore.get(STOREKEY, []));
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) =>
             setLinks(newValue)
@@ -113,16 +103,7 @@ export const GithubTab = props => {
         <Tab.Pane {...props}>
             <Grid>
                 {links.map((link, i) =>
-                    link ? (
-                        <GithubLink
-                            key={i}
-                            index={i}
-                            link={link}
-                            downloadInProgress={downloadInProgress}
-                        />
-                    ) : (
-                        ""
-                    )
+                    link ? <GithubLink key={i} index={i} link={link} /> : ""
                 )}
                 <Grid.Row>
                     <Grid.Column width={15}>

@@ -1,11 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 
-import {
-    AddonStore,
-    OnDownloadInProgress,
-    NotifyDownloadStarted
-} from "../utils";
+import { AddonStore, InstallButton } from "../utils";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
@@ -68,57 +64,54 @@ const Addon = props => {
         });
     }, [props.id, props.version]);
 
-    const install = () => {
-        setLoading(true);
-        NotifyDownloadStarted();
-        const path = AddonStore.get("path");
-        ipcRenderer.send("download", {
-            url: props.downloadUrl,
-            properties: { directory: path }
-        });
-        ipcRenderer.once("download complete", (event, file) => {
-            extract(file, { dir: path }, err => {
-                if (err) console.log(err);
-                // Silently remove zip file
-                try {
-                    fs.unlinkSync(file);
-                } catch (e) {}
-                refVersion.current = refLatestVersion.current;
-                AddonStore.set(
-                    [STOREKEY, props.id, "version"].join("."),
-                    refVersion.current
-                );
-                setLoading(false);
+    const install = async () => {
+        const promise = new Promise(resolve => {
+            const path = AddonStore.get("path");
+            ipcRenderer.send("download", {
+                url: props.downloadUrl,
+                properties: { directory: path }
+            });
+            ipcRenderer.once("download complete", (event, file) => {
+                extract(file, { dir: path }, err => {
+                    if (err) console.log(err);
+                    // Silently remove zip file
+                    try {
+                        fs.unlinkSync(file);
+                    } catch (e) {}
+                    refVersion.current = refLatestVersion.current;
+                    AddonStore.set(
+                        [STOREKEY, props.id, "version"].join("."),
+                        refVersion.current
+                    );
+                    resolve();
+                });
             });
         });
+        await promise;
     };
 
     const installButton =
         refLatestVersion.current !== props.version ? (
             // Update available
-            <Button
+            <InstallButton
                 color="green"
                 loading={loading}
-                disabled={
-                    props.downloadInProgress ||
-                    loading ||
-                    props.downloadUrl === null
-                }
-                onClick={() => install()}
+                disabled={loading}
+                onClick={async () => await install()}
             >
                 <Icon name="download" />
                 {refLatestVersion.current}
-            </Button>
+            </InstallButton>
         ) : (
-            <Button
+            <InstallButton
                 color="blue"
                 loading={loading}
-                disabled={props.downloadInProgress || loading}
-                onClick={() => install()}
+                disabled={loading}
+                onClick={async () => await install()}
             >
                 <Icon name="download" />
                 {props.version}
-            </Button>
+            </InstallButton>
         );
 
     return (
@@ -204,7 +197,6 @@ const AddonSearch = props => {
 
 export const CFTab = props => {
     const [addons, setAddons] = useState([]);
-    const [downloadInProgress, setDownloadInProgress] = useState(false);
     const refTimer = useRef(null);
 
     useEffect(() => {
@@ -216,7 +208,6 @@ export const CFTab = props => {
                 refTimer.current = null;
             }, 100);
         });
-        OnDownloadInProgress(value => setDownloadInProgress(value));
     }, []);
 
     return (
@@ -236,11 +227,7 @@ export const CFTab = props => {
                 </Table.Header>
                 <Table.Body>
                     {addons.map(addon => (
-                        <Addon
-                            key={addon.id}
-                            {...addon}
-                            downloadInProgress={downloadInProgress}
-                        />
+                        <Addon key={addon.id} {...addon} />
                     ))}
                 </Table.Body>
             </Table>

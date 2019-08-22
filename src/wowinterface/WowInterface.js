@@ -2,11 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
-import {
-    AddonStore,
-    OnDownloadInProgress,
-    NotifyDownloadStarted
-} from "../utils";
+import { AddonStore, InstallButton } from "../utils";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
@@ -25,7 +21,6 @@ const updateAddon = async (id, currentVersion) => {
         name: addon.UIName,
         downloadUrl: addon.UIDownload,
         version: currentVersion || addon.UIVersion,
-        author: addon.UIAuthorName,
         downloads: addon.UIHitCount
     });
     return addon.UIVersion;
@@ -44,57 +39,54 @@ const Addon = props => {
         });
     }, [props.id, props.version]);
 
-    const install = () => {
-        setLoading(true);
-        NotifyDownloadStarted();
-        const path = AddonStore.get("path");
-        ipcRenderer.send("download", {
-            url: props.downloadUrl,
-            properties: { directory: path }
-        });
-        ipcRenderer.once("download complete", (event, file) => {
-            extract(file, { dir: path }, err => {
-                if (err) console.log(err);
-                // Silently remove zip file
-                try {
-                    fs.unlinkSync(file);
-                } catch (e) {}
-                refVersion.current = refLatestVersion.current;
-                AddonStore.set(
-                    [STOREKEY, props.id, "version"].join("."),
-                    refVersion.current
-                );
-                setLoading(false);
+    const install = async () => {
+        const promise = new Promise(resolve => {
+            const path = AddonStore.get("path");
+            ipcRenderer.send("download", {
+                url: props.downloadUrl,
+                properties: { directory: path }
+            });
+            ipcRenderer.once("download complete", (event, file) => {
+                extract(file, { dir: path }, err => {
+                    if (err) console.log(err);
+                    // Silently remove zip file
+                    try {
+                        fs.unlinkSync(file);
+                    } catch (e) {}
+                    refVersion.current = refLatestVersion.current;
+                    AddonStore.set(
+                        [STOREKEY, props.id, "version"].join("."),
+                        refVersion.current
+                    );
+                    resolve();
+                });
             });
         });
+        await promise;
     };
 
     const installButton =
         refLatestVersion.current !== props.version ? (
             // Update available
-            <Button
+            <InstallButton
                 color="green"
                 loading={loading}
-                disabled={
-                    props.downloadInProgress ||
-                    loading ||
-                    props.downloadUrl === null
-                }
-                onClick={() => install()}
+                disabled={loading}
+                onClick={async () => await install()}
             >
                 <Icon name="download" />
                 {props.version + " -> " + refLatestVersion.current}
-            </Button>
+            </InstallButton>
         ) : (
-            <Button
+            <InstallButton
                 color="blue"
                 loading={loading}
-                disabled={props.downloadInProgress || loading}
-                onClick={() => install()}
+                disabled={loading}
+                onClick={async () => await install()}
             >
                 <Icon name="download" />
                 {props.version}
-            </Button>
+            </InstallButton>
         );
 
     return (
@@ -107,9 +99,6 @@ const Addon = props => {
                 />
             </Table.Cell>
             <Table.Cell>{props.name}</Table.Cell>
-            <Table.Cell collapsing textAlign="center">
-                {props.author}
-            </Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 {props.downloads}
             </Table.Cell>
@@ -157,11 +146,9 @@ const AddonSearch = props => {
 export const WITab = props => {
     const [addons, setAddons] = useState([]);
     const [addonList, setAddonList] = useState([]);
-    const [downloadInProgress, setDownloadInProgress] = useState(false);
     const refTimer = useRef(null);
 
     useEffect(() => {
-        OnDownloadInProgress(value => setDownloadInProgress(value));
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
@@ -191,7 +178,6 @@ export const WITab = props => {
                     <Table.Row>
                         <Table.HeaderCell />
                         <Table.HeaderCell>Name</Table.HeaderCell>
-                        <Table.HeaderCell collapsing>Author</Table.HeaderCell>
                         <Table.HeaderCell collapsing textAlign="center">
                             Downloads
                         </Table.HeaderCell>
@@ -200,11 +186,7 @@ export const WITab = props => {
                 </Table.Header>
                 <Table.Body>
                     {addons.map(addon => (
-                        <Addon
-                            key={addon.id}
-                            {...addon}
-                            downloadInProgress={downloadInProgress}
-                        />
+                        <Addon key={addon.id} {...addon} />
                     ))}
                 </Table.Body>
             </Table>
