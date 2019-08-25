@@ -3,10 +3,6 @@ import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 
 import { AddonStore, InstallButton } from "../utils";
 
-const ipcRenderer = window.require("electron").ipcRenderer;
-const fs = window.require("fs");
-const extract = window.require("extract-zip");
-
 const STOREKEY = "addons.curseforge";
 const GAMEVERSION = "1.13.2";
 
@@ -15,7 +11,7 @@ Unofficial twitch api doc:
     https://twitchappapi.docs.apiary.io
 */
 
-const updateAddon = async (id, currentVersion) => {
+const fetchAddon = async (id, currentVersion) => {
     const response = await fetch(
         "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
     );
@@ -38,7 +34,8 @@ const updateAddon = async (id, currentVersion) => {
     AddonStore.set(STOREKEY + "." + id, {
         id: id,
         name: data.name,
-        version: currentVersion || latestFile.displayName,
+        version: currentVersion,
+        latestVersion: latestFile.displayName,
         downloadUrl: latestFile.downloadUrl,
         downloadCount: data.downloadCount,
         websiteUrl: data.websiteUrl
@@ -48,70 +45,33 @@ const updateAddon = async (id, currentVersion) => {
 
 const Addon = props => {
     const [loading, setLoading] = useState(false);
-    const refVersion = useRef(props.version);
+    const [version, setVersion] = useState(props.version);
     const refLatestVersion = useRef(null);
 
     useEffect(() => {
-        // Don't reload if not needed
-        if (props.version === refLatestVersion.current) {
-            return;
-        }
+        const stopListening = AddonStore.onDidChange(
+            [STOREKEY, props.id, "version"].join("."),
+            (newValue, oldValue) => {
+                // Avoid if this is a deletion event
+                if (newValue !== undefined) {
+                    setVersion(newValue);
+                }
+            }
+        );
+        return () => stopListening();
+    }, [props.id]);
+
+    useEffect(() => {
+        // if (version === refLatestVersion.current && version !== null) {
+        //     // Does not need to refresh
+        //     return;
+        // }
         setLoading(true);
-        updateAddon(props.id, props.version).then(v => {
+        fetchAddon(props.id, version).then(v => {
             refLatestVersion.current = v;
             setLoading(false);
         });
-    }, [props.id, props.version]);
-
-    const install = async () => {
-        const promise = new Promise(resolve => {
-            const path = AddonStore.get("path");
-            ipcRenderer.send("download", {
-                url: props.downloadUrl,
-                properties: { directory: path }
-            });
-            ipcRenderer.once("download complete", (event, file) => {
-                extract(file, { dir: path }, err => {
-                    if (err) console.log(err);
-                    // Silently remove zip file
-                    try {
-                        fs.unlinkSync(file);
-                    } catch (e) {}
-                    refVersion.current = refLatestVersion.current;
-                    AddonStore.set(
-                        [STOREKEY, props.id, "version"].join("."),
-                        refVersion.current
-                    );
-                    resolve();
-                });
-            });
-        });
-        await promise;
-    };
-
-    const installButton =
-        refLatestVersion.current !== props.version ? (
-            // Update available
-            <InstallButton
-                color="green"
-                loading={loading}
-                disabled={loading}
-                onClick={async () => await install()}
-            >
-                <Icon name="download" />
-                {refLatestVersion.current}
-            </InstallButton>
-        ) : (
-            <InstallButton
-                color="blue"
-                loading={loading}
-                disabled={loading}
-                onClick={async () => await install()}
-            >
-                <Icon name="download" />
-                {props.version}
-            </InstallButton>
-        );
+    }, [props.id, version]);
 
     return (
         <Table.Row>
@@ -136,7 +96,16 @@ const Addon = props => {
                 {props.downloadCount}
             </Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {installButton}
+                <InstallButton
+                    storeKey={STOREKEY}
+                    addon={{
+                        id: props.id,
+                        version: version,
+                        latestVersion: refLatestVersion.current,
+                        downloadUrl: props.downloadUrl
+                    }}
+                    loading={loading}
+                />
             </Table.Cell>
         </Table.Row>
     );
@@ -186,7 +155,7 @@ const AddonSearch = props => {
             loading={loading}
             placeholder="Search addon"
             options={refAddonList.current}
-            onChange={(_, { value }) => updateAddon(value, null)}
+            onChange={(_, { value }) => fetchAddon(value, null)}
             selectOnBlur={false}
             selectOnNavigation={false}
         />
@@ -199,13 +168,17 @@ export const CFTab = props => {
 
     useEffect(() => {
         setAddons(Object.values(AddonStore.get(STOREKEY, {})));
-        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
-            clearTimeout(refTimer.current);
-            refTimer.current = setTimeout(() => {
-                setAddons(Object.values(newValue || {}));
-                refTimer.current = null;
-            }, 100);
-        });
+        const stopListening = AddonStore.onDidChange(
+            STOREKEY,
+            (newValue, oldValue) => {
+                clearTimeout(refTimer.current);
+                refTimer.current = setTimeout(() => {
+                    setAddons(Object.values(newValue || {}));
+                    refTimer.current = null;
+                }, 100);
+            }
+        );
+        return () => stopListening();
     }, []);
 
     return (
