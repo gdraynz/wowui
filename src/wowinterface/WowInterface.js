@@ -152,7 +152,7 @@ export const WITab = props => {
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
-                if (newValue) setAddons(Object.values(newValue));
+                setAddons(Object.values(newValue || {}));
                 refTimer.current = null;
             }, 100);
         });

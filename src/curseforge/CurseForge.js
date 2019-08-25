@@ -38,7 +38,6 @@ const updateAddon = async (id, currentVersion) => {
     AddonStore.set(STOREKEY + "." + id, {
         id: id,
         name: data.name,
-        summary: data.summary,
         version: currentVersion || latestFile.displayName,
         downloadUrl: latestFile.downloadUrl,
         downloadCount: data.downloadCount,
@@ -123,7 +122,7 @@ const Addon = props => {
                     onClick={() => AddonStore.delete(STOREKEY + "." + props.id)}
                 />
             </Table.Cell>
-            <Table.Cell collapsing>
+            <Table.Cell>
                 <a
                     href={props.websiteUrl}
                     target="_blank"
@@ -133,7 +132,6 @@ const Addon = props => {
                     {props.name}
                 </a>
             </Table.Cell>
-            <Table.Cell>{props.summary}</Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 {props.downloadCount}
             </Table.Cell>
@@ -204,7 +202,7 @@ export const CFTab = props => {
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
             clearTimeout(refTimer.current);
             refTimer.current = setTimeout(() => {
-                if (newValue) setAddons(Object.values(newValue));
+                setAddons(Object.values(newValue || {}));
                 refTimer.current = null;
             }, 100);
         });
@@ -217,8 +215,7 @@ export const CFTab = props => {
                 <Table.Header>
                     <Table.Row>
                         <Table.HeaderCell />
-                        <Table.HeaderCell collapsing>Name</Table.HeaderCell>
-                        <Table.HeaderCell>Summary</Table.HeaderCell>
+                        <Table.HeaderCell>Name</Table.HeaderCell>
                         <Table.HeaderCell collapsing textAlign="center">
                             Downloads
                         </Table.HeaderCell>

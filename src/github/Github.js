@@ -100,30 +100,32 @@ export const GithubTab = props => {
     }, [enterPressed, addLink]);
 
     return (
-        <Tab.Pane {...props}>
-            <Grid>
-                {links.map((link, i) =>
-                    link ? <GithubLink key={i} index={i} link={link} /> : ""
-                )}
-                <Grid.Row>
-                    <Grid.Column width={15}>
-                        <Input
-                            fluid
-                            placeholder="Github link to an addon"
-                            value={linkValue}
-                            onChange={(e, { value }) => setLinkValue(value)}
-                        />
-                    </Grid.Column>
-                    <Grid.Column width={1}>
-                        <Button
-                            icon="plus"
-                            floated="right"
-                            color="green"
-                            onClick={() => addLink()}
-                        />
-                    </Grid.Column>
-                </Grid.Row>
-            </Grid>
-        </Tab.Pane>
+        links && (
+            <Tab.Pane {...props}>
+                <Grid>
+                    {links.map((link, i) =>
+                        link ? <GithubLink key={i} index={i} link={link} /> : ""
+                    )}
+                    <Grid.Row>
+                        <Grid.Column width={15}>
+                            <Input
+                                fluid
+                                placeholder="Github link to an addon"
+                                value={linkValue}
+                                onChange={(e, { value }) => setLinkValue(value)}
+                            />
+                        </Grid.Column>
+                        <Grid.Column width={1}>
+                            <Button
+                                icon="plus"
+                                floated="right"
+                                color="green"
+                                onClick={() => addLink()}
+                            />
+                        </Grid.Column>
+                    </Grid.Row>
+                </Grid>
+            </Tab.Pane>
+        )
     );
 };

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Grid, Input, Tab, Button } from "semantic-ui-react";
 
 import { AddonStore, NotifyDownloadFinished } from "./utils";
+import { Options } from "./Options";
 import { CFTab } from "./curseforge/CurseForge";
 import { WITab } from "./wowinterface/WowInterface";
-import { GithubTab } from "./github/Github";
+// import { GithubTab } from "./github/Github";
 
 const { dialog } = window.require("electron").remote;
 const ipcRenderer = window.require("electron").ipcRenderer;
@@ -17,6 +18,10 @@ const App = () => {
         ipcRenderer.on("download complete", (event, info) => {
             NotifyDownloadFinished();
         });
+        // Listen to importation event
+        AddonStore.onDidChange("path", (newValue, oldValue) => {
+            setPathValue(newValue);
+        });
     }, []);
 
     // Hide tabs until a folder is selected
@@ -27,8 +32,8 @@ const App = () => {
                 menuItem: "Curse Forge (classic)",
                 pane: <CFTab key="curseforge" />
             },
-            { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> },
-            { menuItem: "Github", pane: <GithubTab key="github" /> }
+            { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> }
+            // { menuItem: "Github", pane: <GithubTab key="github" /> }
         ];
 
     return (
@@ -36,7 +41,7 @@ const App = () => {
             <Grid.Column width={14}>
                 <Grid.Row>
                     <Grid>
-                        <Grid.Column width={15}>
+                        <Grid.Column width={14}>
                             <Input
                                 fluid
                                 disabled
@@ -45,19 +50,21 @@ const App = () => {
                             />
                         </Grid.Column>
                         <Grid.Column>
-                            <Button
-                                color={pathValue ? "grey" : "red"}
-                                icon="folder"
-                                onClick={() => {
-                                    const path = dialog.showOpenDialogSync({
-                                        properties: ["openDirectory"]
-                                    });
-                                    if (path) {
-                                        AddonStore.set("path", path[0]);
-                                        setPathValue(path[0]);
-                                    }
-                                }}
-                            />
+                            <Button.Group>
+                                <Button
+                                    color={pathValue ? null : "red"}
+                                    icon="folder"
+                                    onClick={() => {
+                                        const path = dialog.showOpenDialogSync({
+                                            properties: ["openDirectory"]
+                                        });
+                                        if (path) {
+                                            AddonStore.set("path", path[0]);
+                                        }
+                                    }}
+                                />
+                                <Options />
+                            </Button.Group>
                         </Grid.Column>
                     </Grid>
                 </Grid.Row>
