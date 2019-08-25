@@ -2,12 +2,6 @@
 
 Shamelessly pulls data from multiple WoW addon websites to search and install addons easily.
 
-## TODO
-
--   Tukui/Elvui
--   Classic/retail switch
--   Github tab
-
 ### dev
 
 ```
