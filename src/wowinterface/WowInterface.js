@@ -1,93 +1,53 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
+import { Table, Button, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
 import { AddonStore, InstallButton } from "../utils";
 
-const ipcRenderer = window.require("electron").ipcRenderer;
-const fs = window.require("fs");
-const extract = window.require("extract-zip");
-
 const STOREKEY = "addons.wowinterface";
 
-const updateAddon = async (id, currentVersion) => {
+const fetchAddon = async (id, currentVersion) => {
     const response = await fetch(
         "https://api.mmoui.com/v3/game/WOW/filedetails/" + id + ".json"
     );
     const data = await response.json();
     const addon = data[0];
-    AddonStore.set(STOREKEY + "." + id, {
+    AddonStore.set([STOREKEY, id].join("."), {
         id: id,
         name: addon.UIName,
+        version: currentVersion,
+        latestVersion: addon.UIVersion,
         downloadUrl: addon.UIDownload,
-        version: currentVersion || addon.UIVersion,
-        downloads: addon.UIHitCount
+        downloadCount: addon.UIHitCount
     });
     return addon.UIVersion;
 };
 
 const Addon = props => {
     const [loading, setLoading] = useState(false);
-    const refVersion = useRef(props.version);
-    const refLatestVersion = useRef(props.version);
+    const [version, setVersion] = useState(props.version);
+    const refLatestVersion = useRef(null);
+
+    useEffect(() => {
+        const stopListening = AddonStore.onDidChange(
+            [STOREKEY, props.id, "version"].join("."),
+            (newValue, oldValue) => {
+                // Avoid if this is a deletion event
+                if (newValue !== undefined) {
+                    setVersion(newValue);
+                }
+            }
+        );
+        return () => stopListening();
+    }, [props.id]);
 
     useEffect(() => {
         setLoading(true);
-        updateAddon(props.id, props.version).then(v => {
+        fetchAddon(props.id, version).then(v => {
             refLatestVersion.current = v;
             setLoading(false);
         });
-    }, [props.id, props.version]);
-
-    const install = async () => {
-        const promise = new Promise(resolve => {
-            const path = AddonStore.get("path");
-            ipcRenderer.send("download", {
-                url: props.downloadUrl,
-                properties: { directory: path }
-            });
-            ipcRenderer.once("download complete", (event, file) => {
-                extract(file, { dir: path }, err => {
-                    if (err) console.log(err);
-                    // Silently remove zip file
-                    try {
-                        fs.unlinkSync(file);
-                    } catch (e) {}
-                    refVersion.current = refLatestVersion.current;
-                    AddonStore.set(
-                        [STOREKEY, props.id, "version"].join("."),
-                        refVersion.current
-                    );
-                    resolve();
-                });
-            });
-        });
-        await promise;
-    };
-
-    const installButton =
-        refLatestVersion.current !== props.version ? (
-            // Update available
-            <InstallButton
-                color="green"
-                loading={loading}
-                disabled={loading}
-                onClick={async () => await install()}
-            >
-                <Icon name="download" />
-                {props.version + " -> " + refLatestVersion.current}
-            </InstallButton>
-        ) : (
-            <InstallButton
-                color="blue"
-                loading={loading}
-                disabled={loading}
-                onClick={async () => await install()}
-            >
-                <Icon name="download" />
-                {props.version}
-            </InstallButton>
-        );
+    }, [props.id, version]);
 
     return (
         <Table.Row>
@@ -100,10 +60,19 @@ const Addon = props => {
             </Table.Cell>
             <Table.Cell>{props.name}</Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {props.downloads}
+                {props.downloadCount}
             </Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {installButton}
+                <InstallButton
+                    storeKey={STOREKEY}
+                    addon={{
+                        id: props.id,
+                        version: version,
+                        latestVersion: refLatestVersion.current,
+                        downloadUrl: props.downloadUrl
+                    }}
+                    loading={loading}
+                />
             </Table.Cell>
         </Table.Row>
     );
@@ -122,7 +91,7 @@ const AddonSearch = props => {
 
     const fetchAddon = id => {
         setLoading(true);
-        updateAddon(id, null).then(v => {
+        fetchAddon(id, null).then(v => {
             setLoading(false);
         });
     };

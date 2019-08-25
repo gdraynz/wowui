@@ -19,9 +19,13 @@ const App = () => {
             NotifyDownloadFinished();
         });
         // Listen to importation event
-        AddonStore.onDidChange("path", (newValue, oldValue) => {
-            setPathValue(newValue);
-        });
+        const stopListening = AddonStore.onDidChange(
+            "path",
+            (newValue, oldValue) => {
+                setPathValue(newValue);
+            }
+        );
+        return () => stopListening();
     }, []);
 
     // Hide tabs until a folder is selected
