@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
-import { AddonStore, InstallButton } from "../utils";
+import { AddonStore, InstallButton, numberWithSpaces } from "../utils";
 
 const STOREKEY = "addons.wowinterface";
 
@@ -60,7 +60,7 @@ const Addon = props => {
             </Table.Cell>
             <Table.Cell>{props.name}</Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {props.downloadCount}
+                {numberWithSpaces(props.downloadCount)}
             </Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 <InstallButton
@@ -79,8 +79,6 @@ const Addon = props => {
 };
 
 const AddonSearch = props => {
-    const [loading, setLoading] = useState(false);
-
     const customSearch = (options, query) => {
         if (query.length < 2) {
             return [];
@@ -89,23 +87,15 @@ const AddonSearch = props => {
         return props.addonList.filter(item => re.test(item.text));
     };
 
-    const fetchAddon = id => {
-        setLoading(true);
-        fetchAddon(id, null).then(v => {
-            setLoading(false);
-        });
-    };
-
     return (
         <Dropdown
             fluid
             selection
             options={[]}
             search={customSearch}
-            loading={loading}
             minCharacters={2}
             placeholder="Search addon"
-            onChange={(_, { value }) => fetchAddon(value)}
+            onChange={(_, { value }) => fetchAddon(value, null)}
             selectOnBlur={false}
             selectOnNavigation={false}
         />
@@ -113,7 +103,9 @@ const AddonSearch = props => {
 };
 
 export const WITab = props => {
-    const [addons, setAddons] = useState([]);
+    const [addons, setAddons] = useState(
+        Object.values(AddonStore.get(STOREKEY, {}))
+    );
     const [addonList, setAddonList] = useState([]);
     const refTimer = useRef(null);
 
@@ -125,7 +117,6 @@ export const WITab = props => {
                 refTimer.current = null;
             }, 100);
         });
-        setAddons(Object.values(AddonStore.get(STOREKEY, {})));
         fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
             .then(response => response.json())
             .then(data =>
@@ -140,25 +131,27 @@ export const WITab = props => {
     }, []);
 
     return (
-        <Tab.Pane {...props}>
-            <AddonSearch addonList={addonList} />
-            <Table selectable celled>
-                <Table.Header>
-                    <Table.Row>
-                        <Table.HeaderCell />
-                        <Table.HeaderCell>Name</Table.HeaderCell>
-                        <Table.HeaderCell collapsing textAlign="center">
-                            Downloads
-                        </Table.HeaderCell>
-                        <Table.HeaderCell collapsing textAlign="center" />
-                    </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                    {addons.map(addon => (
-                        <Addon key={addon.id} {...addon} />
-                    ))}
-                </Table.Body>
-            </Table>
-        </Tab.Pane>
+        addonList && (
+            <Tab.Pane {...props}>
+                <AddonSearch addonList={addonList} />
+                <Table selectable celled>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.HeaderCell />
+                            <Table.HeaderCell>Name</Table.HeaderCell>
+                            <Table.HeaderCell collapsing textAlign="center">
+                                Downloads
+                            </Table.HeaderCell>
+                            <Table.HeaderCell collapsing textAlign="center" />
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {addons.map(addon => (
+                            <Addon key={addon.id} {...addon} />
+                        ))}
+                    </Table.Body>
+                </Table>
+            </Tab.Pane>
+        )
     );
 };

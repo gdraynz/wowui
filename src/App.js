@@ -5,6 +5,7 @@ import { AddonStore } from "./utils";
 import { Options } from "./Options";
 import { CFTab } from "./curseforge/CurseForge";
 import { WITab } from "./wowinterface/WowInterface";
+import { TukuiTab } from "./tukui/Tukui";
 // import { GithubTab } from "./github/Github";
 
 const { dialog } = window.require("electron").remote;
@@ -28,10 +29,11 @@ const App = () => {
     if (pathValue !== "")
         panes = [
             {
-                menuItem: "Curse Forge (classic)",
+                menuItem: "Curse Forge",
                 pane: <CFTab key="curseforge" />
             },
-            { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> }
+            { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> },
+            { menuItem: "Tukui/Elvui", pane: <TukuiTab key="tukui" /> }
             // { menuItem: "Github", pane: <GithubTab key="github" /> }
         ];
 

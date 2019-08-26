@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
 
-import { AddonStore, InstallButton } from "../utils";
+import { AddonStore, InstallButton, numberWithSpaces } from "../utils";
 
 const STOREKEY = "addons.curseforge";
 const GAMEVERSION = "1.13.2";
@@ -62,10 +62,6 @@ const Addon = props => {
     }, [props.id]);
 
     useEffect(() => {
-        // if (version === refLatestVersion.current && version !== null) {
-        //     // Does not need to refresh
-        //     return;
-        // }
         setLoading(true);
         fetchAddon(props.id, version).then(v => {
             refLatestVersion.current = v;
@@ -93,7 +89,7 @@ const Addon = props => {
                 </a>
             </Table.Cell>
             <Table.Cell collapsing textAlign="center">
-                {props.downloadCount}
+                {numberWithSpaces(props.downloadCount)}
             </Table.Cell>
             <Table.Cell collapsing textAlign="center">
                 <InstallButton
