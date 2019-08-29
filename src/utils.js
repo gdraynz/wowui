@@ -104,6 +104,3 @@ export const InstallButton = props => {
         </Button>
     );
 };
-
-export const numberWithSpaces = s =>
-    s.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Table, Button, Icon, Dropdown, Tab } from "semantic-ui-react";
+import { Table, Dropdown, Tab } from "semantic-ui-react";
 
-import { AddonStore, InstallButton, numberWithSpaces } from "../utils";
+import { Addon } from "../Addon";
+import { AddonStore } from "../utils";
 
 const STOREKEY = "addons.curseforge";
 const GAMEVERSION = "1.13.2";
@@ -11,7 +12,7 @@ Unofficial twitch api doc:
     https://twitchappapi.docs.apiary.io
 */
 
-const fetchAddon = async (id, currentVersion) => {
+const checkForUpdate = async (id, currentVersion) => {
     const response = await fetch(
         "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
     );
@@ -41,70 +42,6 @@ const fetchAddon = async (id, currentVersion) => {
         websiteUrl: data.websiteUrl
     });
     return latestFile.displayName;
-};
-
-const Addon = props => {
-    const [loading, setLoading] = useState(false);
-    const [version, setVersion] = useState(props.version);
-    const refLatestVersion = useRef(null);
-
-    useEffect(() => {
-        const stopListening = AddonStore.onDidChange(
-            [STOREKEY, props.id, "version"].join("."),
-            (newValue, oldValue) => {
-                // Avoid if this is a deletion event
-                if (newValue !== undefined) {
-                    setVersion(newValue);
-                }
-            }
-        );
-        return () => stopListening();
-    }, [props.id]);
-
-    useEffect(() => {
-        setLoading(true);
-        fetchAddon(props.id, version).then(v => {
-            refLatestVersion.current = v;
-            setLoading(false);
-        });
-    }, [props.id, version]);
-
-    return (
-        <Table.Row>
-            <Table.Cell collapsing>
-                <Button
-                    color="red"
-                    icon="trash alternate"
-                    onClick={() => AddonStore.delete(STOREKEY + "." + props.id)}
-                />
-            </Table.Cell>
-            <Table.Cell>
-                <a
-                    href={props.websiteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <Icon name="external alternate" />
-                    {props.name}
-                </a>
-            </Table.Cell>
-            <Table.Cell collapsing textAlign="center">
-                {numberWithSpaces(props.downloadCount)}
-            </Table.Cell>
-            <Table.Cell collapsing textAlign="center">
-                <InstallButton
-                    storeKey={STOREKEY}
-                    addon={{
-                        id: props.id,
-                        version: version,
-                        latestVersion: refLatestVersion.current,
-                        downloadUrl: props.downloadUrl
-                    }}
-                    loading={loading}
-                />
-            </Table.Cell>
-        </Table.Row>
-    );
 };
 
 const AddonSearch = props => {
@@ -151,7 +88,7 @@ const AddonSearch = props => {
             loading={loading}
             placeholder="Search addon"
             options={refAddonList.current}
-            onChange={(_, { value }) => fetchAddon(value, null)}
+            onChange={(_, { value }) => checkForUpdate(value, null)}
             selectOnBlur={false}
             selectOnNavigation={false}
         />
@@ -159,11 +96,12 @@ const AddonSearch = props => {
 };
 
 export const CFTab = props => {
-    const [addons, setAddons] = useState([]);
+    const [addons, setAddons] = useState(
+        Object.values(AddonStore.get(STOREKEY, {}))
+    );
     const refTimer = useRef(null);
 
     useEffect(() => {
-        setAddons(Object.values(AddonStore.get(STOREKEY, {})));
         const stopListening = AddonStore.onDidChange(
             STOREKEY,
             (newValue, oldValue) => {
@@ -193,7 +131,12 @@ export const CFTab = props => {
                 </Table.Header>
                 <Table.Body>
                     {addons.map(addon => (
-                        <Addon key={addon.id} {...addon} />
+                        <Addon
+                            key={addon.id}
+                            {...addon}
+                            storeKey={STOREKEY}
+                            checkForUpdate={checkForUpdate}
+                        />
                     ))}
                 </Table.Body>
             </Table>

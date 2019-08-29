@@ -21,6 +21,8 @@ const ExportOption = () => {
         if (addons.wowinterface)
             string +=
                 "|wowinterface:" + Object.keys(addons.wowinterface).join(",");
+        if (addons.wowinterface)
+            string += "|tukui:" + Object.keys(addons.tukui).join(",");
         setExportValue(btoa(string));
     };
 
@@ -29,7 +31,7 @@ const ExportOption = () => {
             onOpen={exportStore}
             trigger={
                 <Dropdown.Item>
-                    <Icon name="download" />
+                    <Icon name="upload" />
                     Export
                 </Dropdown.Item>
             }
@@ -68,7 +70,7 @@ const ImportOption = () => {
     return (
         <React.Fragment>
             <Dropdown.Item onClick={() => setOpened(true)}>
-                <Icon name="upload" />
+                <Icon name="download" />
                 Import
             </Dropdown.Item>
             <Modal onClose={close} open={opened}>
@@ -99,6 +101,7 @@ const ResetOption = () => {
     const resetData = () => {
         AddonStore.delete("addons.curseforge");
         AddonStore.delete("addons.wowinterface");
+        AddonStore.delete("addons.tukui");
         setOpened(false);
     };
 

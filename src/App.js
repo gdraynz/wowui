@@ -42,7 +42,7 @@ const App = () => {
             <Grid.Column width={14}>
                 <Grid.Row>
                     <Grid>
-                        <Grid.Column width={13}>
+                        <Grid.Column width={14}>
                             <Input
                                 fluid
                                 disabled
