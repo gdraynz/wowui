@@ -99,18 +99,11 @@ export const CFTab = props => {
     const [addons, setAddons] = useState(
         Object.values(AddonStore.get(STOREKEY, {}))
     );
-    const refTimer = useRef(null);
 
     useEffect(() => {
         const stopListening = AddonStore.onDidChange(
             STOREKEY,
-            (newValue, oldValue) => {
-                clearTimeout(refTimer.current);
-                refTimer.current = setTimeout(() => {
-                    setAddons(Object.values(newValue || {}));
-                    refTimer.current = null;
-                }, 100);
-            }
+            (newValue, oldValue) => setAddons(Object.values(newValue || {}))
         );
         return () => stopListening();
     }, []);

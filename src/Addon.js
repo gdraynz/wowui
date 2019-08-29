@@ -1,10 +1,76 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Button, Icon } from "semantic-ui-react";
 
-import { AddonStore, InstallButton } from "./utils";
+import { AddonStore } from "./utils";
+
+// Stuff to download/extract zip sequentially
+const ipcRenderer = window.require("electron").ipcRenderer;
+const fs = window.require("fs");
+const extract = window.require("extract-zip");
+const downloadKey = "downloadInProgress";
 
 const numberWithSpaces = s =>
     s ? s.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "";
+
+const InstallButton = props => {
+    const [loading, setLoading] = useState(props.loading);
+    const [disabled, setDisabled] = useState(false);
+    const { id, version, latestVersion, downloadUrl } = props.addon;
+
+    useEffect(() => {
+        // Disable install buttons while a download is in progress
+        const stopListening = AddonStore.onDidChange(
+            downloadKey,
+            (newValue, oldValue) => setDisabled(newValue)
+        );
+        return () => stopListening();
+    }, []);
+
+    useEffect(() => {
+        setLoading(props.loading);
+    }, [props.loading]);
+
+    const install = () => {
+        AddonStore.set(downloadKey, true);
+        setLoading(true);
+        const path = AddonStore.get("path");
+        ipcRenderer.send("download", {
+            url: downloadUrl,
+            properties: { directory: path }
+        });
+        ipcRenderer.once("download complete", (event, file) => {
+            extract(file, { dir: path }, err => {
+                if (err) console.log(err);
+                // Silently remove zip file
+                fs.unlink(file, err => (err ? console.log(err) : ""));
+                AddonStore.set(
+                    [props.storeKey, id, "version"].join("."),
+                    latestVersion
+                );
+                setLoading(props.loading);
+                AddonStore.set(downloadKey, false);
+            });
+        });
+    };
+
+    const needsUpdate = version !== latestVersion;
+
+    return (
+        <Button
+            color={needsUpdate ? "green" : "blue"}
+            disabled={loading || disabled}
+            loading={loading}
+            onClick={() => install()}
+        >
+            {needsUpdate ? <Icon name="download" /> : ""}
+            {latestVersion === null
+                ? version
+                : version !== latestVersion
+                ? latestVersion
+                : version}
+        </Button>
+    );
+};
 
 export const Addon = props => {
     const [loading, setLoading] = useState(false);
@@ -28,11 +94,11 @@ export const Addon = props => {
 
     useEffect(() => {
         setLoading(true);
-        checkForUpdate(props.id, props.version).then(v => {
+        checkForUpdate(props.id, version).then(v => {
             refLatestVersion.current = v;
             setLoading(false);
         });
-    }, [checkForUpdate, props.id, props.version]);
+    }, [checkForUpdate, props.id, version]);
 
     return (
         <Table.Row>

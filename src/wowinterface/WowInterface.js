@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
@@ -54,23 +54,18 @@ export const WITab = props => {
         Object.values(AddonStore.get(STOREKEY, {}))
     );
     const [addonList, setAddonList] = useState([]);
-    const refTimer = useRef(null);
 
     useEffect(() => {
-        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) => {
-            clearTimeout(refTimer.current);
-            refTimer.current = setTimeout(() => {
-                setAddons(Object.values(newValue || {}));
-                refTimer.current = null;
-            }, 100);
-        });
+        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) =>
+            setAddons(Object.values(newValue || {}))
+        );
         fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
             .then(response => response.json())
             .then(data =>
                 setAddonList(
                     data.map(item => ({
                         key: item.UID,
-                        value: item,
+                        value: item.UID,
                         text: item.UIName
                     }))
                 )
