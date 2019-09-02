@@ -102,9 +102,7 @@ const ResetOption = () => {
     const [opened, setOpened] = useState(false);
 
     const resetData = () => {
-        AddonStore.delete("addons.curseforge");
-        AddonStore.delete("addons.wowinterface");
-        AddonStore.delete("addons.tukui");
+        AddonStore.delete("addons");
         setOpened(false);
     };
 

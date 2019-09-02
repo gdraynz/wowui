@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Grid, Input, Tab, Button } from "semantic-ui-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Grid, Input, Tab, Button, Message, Icon } from "semantic-ui-react";
 
 import { AddonStore } from "./utils";
 import { Options } from "./Options";
@@ -8,7 +8,38 @@ import { WITab } from "./wowinterface/WowInterface";
 import { TukuiTab } from "./tukui/Tukui";
 // import { GithubTab } from "./github/Github";
 
-const { dialog } = window.require("electron").remote;
+const { dialog, app } = window.require("electron").remote;
+
+export const VersionCheck = () => {
+    const [latestVersion, setLatestVersion] = useState(null);
+    const [url, setUrl] = useState(null);
+
+    useEffect(() => {
+        fetch("https://api.github.com/repos/gdraynz/wowui/releases/latest")
+            .then(response => response.json())
+            .then(data => {
+                if (data["tag_name"] !== app.getVersion()) {
+                    setLatestVersion(data["tag_name"]);
+                    setUrl(data["assets"][0]["browser_download_url"]);
+                }
+            });
+    }, []);
+
+    return (
+        latestVersion &&
+        url && (
+            <Grid.Row>
+                <Message warning icon>
+                    <Icon name="exclamation" />
+                    <Message.Content>
+                        <Message.Header>New version available</Message.Header>
+                        <a href={url}>Download {latestVersion}</a>
+                    </Message.Content>
+                </Message>
+            </Grid.Row>
+        )
+    );
+};
 
 const App = () => {
     const [pathValue, setPathValue] = useState(AddonStore.get("path", ""));
@@ -40,6 +71,7 @@ const App = () => {
     return (
         <Grid centered style={{ marginTop: "2vh" }}>
             <Grid.Column width={14}>
+                <VersionCheck />
                 <Grid.Row>
                     <Grid>
                         <Grid.Column width={14}>
