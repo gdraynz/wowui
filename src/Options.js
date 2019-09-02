@@ -15,15 +15,18 @@ const ExportOption = () => {
 
     const exportStore = () => {
         const addons = AddonStore.get("addons");
-        let string = "";
+        const sites = [];
         if (addons.curseforge)
-            string += "curseforge:" + Object.keys(addons.curseforge).join(",");
+            sites.push(
+                "curseforge:" + Object.keys(addons.curseforge).join(",")
+            );
         if (addons.wowinterface)
-            string +=
-                "|wowinterface:" + Object.keys(addons.wowinterface).join(",");
-        if (addons.wowinterface)
-            string += "|tukui:" + Object.keys(addons.tukui).join(",");
-        setExportValue(btoa(string));
+            sites.push(
+                "wowinterface:" + Object.keys(addons.wowinterface).join(",")
+            );
+        if (addons.tukui)
+            sites.push("tukui:" + Object.keys(addons.tukui).join(","));
+        setExportValue(btoa(sites.join("|")));
     };
 
     return (
