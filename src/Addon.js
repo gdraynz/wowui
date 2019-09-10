@@ -93,12 +93,21 @@ export const Addon = props => {
     }, [props.storeKey, props.id]);
 
     useEffect(() => {
-        setLoading(true);
-        checkForUpdate(props.id, version).then(v => {
-            refLatestVersion.current = v;
-            setLoading(false);
-        });
-    }, [checkForUpdate, props.id, version]);
+        if (
+            // Name is undefined in case of an Import
+            !props.name ||
+            // No version known, fetch the latest
+            !refLatestVersion.current ||
+            // Version is the latest, check if a new one exists
+            version === refLatestVersion.current
+        ) {
+            setLoading(true);
+            checkForUpdate(props.id, version).then(v => {
+                refLatestVersion.current = v;
+                setLoading(false);
+            });
+        }
+    }, [checkForUpdate, props.id, props.name, version]);
 
     return (
         <Table.Row>

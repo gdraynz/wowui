@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Grid, Input, Tab, Button, Message, Icon } from "semantic-ui-react";
 
 import { AddonStore } from "./utils";

@@ -9,7 +9,7 @@ const STOREKEY = "addons.tukui";
 
 const checkForUpdate = async (id, currentVersion) => {
     const response = await fetch(
-        "https://www.tukui.org/api.php?classic-addon= " + id
+        "https://www.tukui.org/api.php?classic-addon=" + id
     );
     const addon = await response.json();
     AddonStore.set([STOREKEY, id].join("."), {

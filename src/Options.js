@@ -56,13 +56,15 @@ const ImportOption = () => {
     const importStore = () => {
         const string = atob(refValue.current);
         const values = string.split("|");
+        AddonStore.delete("addons");
         values.map(item => {
             const data = item.split(":");
-            const key = "addons." + data[0] + ".";
+            const addons = {};
             data[1].split(",").map(id => {
-                AddonStore.set(key + id, { id: id });
+                addons[id] = { id: id };
                 return null;
             });
+            AddonStore.set("addons." + data[0], addons);
             return null;
         });
         setOpened(false);
