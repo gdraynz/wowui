@@ -22,7 +22,7 @@ const checkForUpdate = async (id, currentVersion) => {
     let latestFile = {};
     const BreakException = {};
     try {
-        data.latestFiles.forEach(file => {
+        data.latestFiles.reverse().forEach(file => {
             file.gameVersion.forEach(version => {
                 if (version === GAMEVERSION) {
                     latestFile = file;
