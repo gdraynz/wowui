@@ -10,9 +10,9 @@
         "electron-store": "^5.0.0",
         "extract-zip": "^1.6.7",
         "lodash": "^4.17.15",
-        "react": "^16.9.0",
-        "react-dom": "^16.9.0",
-        "react-scripts": "^3.1.1",
+        "react": "^16.10.2",
+        "react-dom": "^16.10.2",
+        "react-scripts": "^3.2.0",
         "rimraf": "^3.0.0",
         "semantic-ui-css": "^2.4.1",
         "semantic-ui-react": "^0.88.1"
@@ -37,10 +37,10 @@
         "not op_mini all"
     ],
     "devDependencies": {
-        "concurrently": "^4.1.2",
-        "electron": "^6.0.8",
+        "concurrently": "^5.0.0",
+        "electron": "^6.0.12",
         "electron-builder": "^21.2.0",
-        "typescript": "^3.6.2",
+        "typescript": "^3.6.4",
         "wait-on": "^3.3.0"
     },
     "author": {

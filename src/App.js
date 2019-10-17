@@ -74,7 +74,11 @@ const App = () => {
                 <VersionCheck />
                 <Grid.Row>
                     <Grid>
-                        <Grid.Column width={14}>
+                        <Grid.Column
+                            width={14}
+                            textAlign="center"
+                            verticalAlign="middle"
+                        >
                             <Input
                                 fluid
                                 disabled
@@ -82,7 +86,11 @@ const App = () => {
                                 placeholder="Path to WoW addons folder"
                             />
                         </Grid.Column>
-                        <Grid.Column>
+                        <Grid.Column
+                            width={2}
+                            textAlign="center"
+                            verticalAlign="middle"
+                        >
                             <Button.Group>
                                 <Button
                                     color={pathValue ? null : "red"}

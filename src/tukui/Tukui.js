@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Dropdown, Tab } from "semantic-ui-react";
+import { Table, Dropdown, Tab, Grid, Checkbox } from "semantic-ui-react";
 import _ from "lodash";
 
 import { Addon } from "../Addon";
@@ -52,12 +52,17 @@ export const TukuiTab = props => {
         Object.values(AddonStore.get(STOREKEY, {}))
     );
     const [addonList, setAddonList] = useState([]);
+    const [classic, setClassic] = useState(true);
 
     useEffect(() => {
         AddonStore.onDidChange(STOREKEY, (newValue, oldValue) =>
             setAddons(Object.values(newValue || {}))
         );
-        fetch("https://www.tukui.org/api.php?classic-addons=all")
+        fetch(
+            "https://www.tukui.org/api.php?" +
+                (classic ? "classic-" : "") +
+                "addons=all"
+        )
             .then(response => response.json())
             .then(data =>
                 setAddonList(
@@ -69,12 +74,28 @@ export const TukuiTab = props => {
                     }))
                 )
             );
-    }, []);
+    }, [classic]);
 
     return (
         addonList && (
             <Tab.Pane {...props}>
-                <AddonSearch addonList={addonList} />
+                <Grid>
+                    <Grid.Column width={14}>
+                        <AddonSearch addonList={addonList} />
+                    </Grid.Column>
+                    <Grid.Column
+                        width={2}
+                        textAlign="center"
+                        verticalAlign="middle"
+                    >
+                        <Checkbox
+                            toggle
+                            onChange={() => setClassic(!classic)}
+                        />
+                        <br />
+                        {classic ? "Classic" : "Retail"}
+                    </Grid.Column>
+                </Grid>
                 <Table selectable celled>
                     <Table.Header>
                         <Table.Row>
