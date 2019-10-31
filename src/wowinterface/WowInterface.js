@@ -3,27 +3,9 @@ import { Table, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
 import { Addon } from "../Addon";
-import { AddonStore } from "../utils";
+import { AddonStore, useGameVersion } from "../utils";
 
-const STOREKEY = "addons.wowinterface";
-
-const checkForUpdate = async (id, currentVersion) => {
-    const response = await fetch(
-        "https://api.mmoui.com/v3/game/WOW/filedetails/" + id + ".json"
-    );
-    const data = await response.json();
-    const addon = data[0];
-    AddonStore.set([STOREKEY, id].join("."), {
-        id: id,
-        name: addon.UIName,
-        version: currentVersion,
-        latestVersion: addon.UIVersion,
-        downloadUrl: addon.UIDownload,
-        downloadCount: addon.UIHitCount,
-        websiteUrl: null
-    });
-    return addon.UIVersion;
-};
+const BASESTOREKEY = "addons.wowinterface";
 
 const AddonSearch = props => {
     const customSearch = (options, query) => {
@@ -42,7 +24,7 @@ const AddonSearch = props => {
             search={customSearch}
             minCharacters={2}
             placeholder="Search addon"
-            onChange={(_, { value }) => checkForUpdate(value)}
+            onChange={(_, { value }) => props.checkForUpdate(value, null)}
             selectOnBlur={false}
             selectOnNavigation={false}
         />
@@ -50,15 +32,18 @@ const AddonSearch = props => {
 };
 
 export const WITab = props => {
-    const [addons, setAddons] = useState(
-        Object.values(AddonStore.get(STOREKEY, {}))
-    );
+    const gameVersion = useGameVersion();
+    const [addons, setAddons] = useState([]);
     const [addonList, setAddonList] = useState([]);
 
+    const storeKey = [gameVersion.name, BASESTOREKEY].join(".");
+
     useEffect(() => {
-        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) =>
-            setAddons(Object.values(newValue || {}))
+        const stopListening = AddonStore.onDidChange(
+            storeKey,
+            (newValue, oldValue) => setAddons(Object.values(newValue || {}))
         );
+        setAddons(Object.values(AddonStore.get(storeKey, [])));
         fetch("https://api.mmoui.com/v3/game/WOW/filelist.json")
             .then(response => response.json())
             .then(data =>
@@ -70,12 +55,34 @@ export const WITab = props => {
                     }))
                 )
             );
-    }, []);
+        return () => stopListening();
+    }, [storeKey]);
+
+    const checkForUpdate = async (id, currentVersion) => {
+        const response = await fetch(
+            "https://api.mmoui.com/v3/game/WOW/filedetails/" + id + ".json"
+        );
+        const data = await response.json();
+        const addon = data[0];
+        AddonStore.set([storeKey, id].join("."), {
+            id: id,
+            name: addon.UIName,
+            version: currentVersion,
+            latestVersion: addon.UIVersion,
+            downloadUrl: addon.UIDownload,
+            downloadCount: addon.UIHitCount,
+            websiteUrl: null
+        });
+        return addon.UIVersion;
+    };
 
     return (
         addonList && (
             <Tab.Pane {...props}>
-                <AddonSearch addonList={addonList} />
+                <AddonSearch
+                    addonList={addonList}
+                    checkForUpdate={checkForUpdate}
+                />
                 <Table selectable celled>
                     <Table.Header>
                         <Table.Row>
@@ -92,7 +99,7 @@ export const WITab = props => {
                             <Addon
                                 key={addon.id}
                                 {...addon}
-                                storeKey={STOREKEY}
+                                storeKey={storeKey}
                                 checkForUpdate={checkForUpdate}
                             />
                         ))}

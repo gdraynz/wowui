@@ -1,28 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Table, Dropdown, Tab, Grid, Checkbox } from "semantic-ui-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Table, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
 import { Addon } from "../Addon";
-import { AddonStore } from "../utils";
+import { AddonStore, useGameVersion } from "../utils";
 
-const STOREKEY = "addons.tukui";
-
-const checkForUpdate = async (id, currentVersion) => {
-    const response = await fetch(
-        "https://www.tukui.org/api.php?classic-addon=" + id
-    );
-    const addon = await response.json();
-    AddonStore.set([STOREKEY, id].join("."), {
-        id: id,
-        name: addon.name,
-        version: currentVersion,
-        latestVersion: addon.version,
-        downloadUrl: addon.url,
-        downloadCount: addon.downloads,
-        websiteUrl: addon.web_url
-    });
-    return addon.version;
-};
+const BASESTOREKEY = "addons.tukui";
 
 const AddonSearch = props => {
     const customSearch = (options, query) => {
@@ -40,7 +23,7 @@ const AddonSearch = props => {
             options={[]}
             search={customSearch}
             placeholder="Search addon"
-            onChange={(_, { value }) => checkForUpdate(value, null)}
+            onChange={(_, { value }) => props.checkForUpdate(value, null)}
             selectOnBlur={false}
             selectOnNavigation={false}
         />
@@ -48,19 +31,21 @@ const AddonSearch = props => {
 };
 
 export const TukuiTab = props => {
-    const [addons, setAddons] = useState(
-        Object.values(AddonStore.get(STOREKEY, {}))
-    );
+    const gameVersion = useGameVersion();
+    const [addons, setAddons] = useState([]);
     const [addonList, setAddonList] = useState([]);
-    const [classic, setClassic] = useState(true);
+
+    const storeKey = [gameVersion.name, BASESTOREKEY].join(".");
 
     useEffect(() => {
-        AddonStore.onDidChange(STOREKEY, (newValue, oldValue) =>
-            setAddons(Object.values(newValue || {}))
+        const stopListening = AddonStore.onDidChange(
+            storeKey,
+            (newValue, oldValue) => setAddons(Object.values(newValue || {}))
         );
+        setAddons(Object.values(AddonStore.get(storeKey, [])));
         fetch(
             "https://www.tukui.org/api.php?" +
-                (classic ? "classic-" : "") +
+                (gameVersion.name === "classic" ? "classic-" : "") +
                 "addons=all"
         )
             .then(response => response.json())
@@ -74,28 +59,36 @@ export const TukuiTab = props => {
                     }))
                 )
             );
-    }, [classic]);
+        return () => stopListening();
+    }, [gameVersion.name, storeKey]);
+
+    const checkForUpdate = async (id, currentVersion) => {
+        const response = await fetch(
+            "https://www.tukui.org/api.php?" +
+                (gameVersion.name === "classic" ? "classic-" : "") +
+                "addon=" +
+                id
+        );
+        const addon = await response.json();
+        AddonStore.set([storeKey, id].join("."), {
+            id: id,
+            name: addon.name,
+            version: currentVersion,
+            latestVersion: addon.version,
+            downloadUrl: addon.url,
+            downloadCount: addon.downloads,
+            websiteUrl: addon.web_url
+        });
+        return addon.version;
+    };
 
     return (
         addonList && (
             <Tab.Pane {...props}>
-                <Grid>
-                    <Grid.Column width={14}>
-                        <AddonSearch addonList={addonList} />
-                    </Grid.Column>
-                    <Grid.Column
-                        width={2}
-                        textAlign="center"
-                        verticalAlign="middle"
-                    >
-                        <Checkbox
-                            toggle
-                            onChange={() => setClassic(!classic)}
-                        />
-                        <br />
-                        {classic ? "Classic" : "Retail"}
-                    </Grid.Column>
-                </Grid>
+                <AddonSearch
+                    addonList={addonList}
+                    checkForUpdate={checkForUpdate}
+                />
                 <Table selectable celled>
                     <Table.Header>
                         <Table.Row>
@@ -112,7 +105,7 @@ export const TukuiTab = props => {
                             <Addon
                                 key={addon.id}
                                 {...addon}
-                                storeKey={STOREKEY}
+                                storeKey={storeKey}
                                 checkForUpdate={checkForUpdate}
                             />
                         ))}

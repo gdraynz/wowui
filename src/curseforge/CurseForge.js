@@ -1,61 +1,21 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Table, Dropdown, Tab, Grid, Checkbox } from "semantic-ui-react";
+import { Table, Dropdown, Tab } from "semantic-ui-react";
 
 import { Addon } from "../Addon";
-import { AddonStore } from "../utils";
-
-const STOREKEY = "addons.curseforge";
-const GAMEVERSIONS = {
-    classic: "1.13.2",
-    retail: "8.2.5"
-};
-var isClassic = true;
+import { AddonStore, useGameVersion } from "../utils";
 
 /*
 Unofficial twitch api doc:
     https://twitchappapi.docs.apiary.io
 */
 
-const checkForUpdate = async (id, currentVersion) => {
-    const response = await fetch(
-        "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
-    );
-    const data = await response.json();
-
-    // Pick only the latest file with the right game version
-    let latestFile = {};
-    const BreakException = {};
-    try {
-        data.latestFiles.reverse().forEach(file => {
-            file.gameVersion.forEach(version => {
-                if (
-                    isClassic
-                        ? version.startsWith("1.")
-                        : version.startsWith("8.")
-                ) {
-                    latestFile = file;
-                    throw BreakException;
-                }
-            });
-        });
-    } catch (e) {}
-
-    AddonStore.set(STOREKEY + "." + id, {
-        id: id,
-        name: data.name,
-        version: currentVersion,
-        latestVersion: latestFile.displayName,
-        downloadUrl: latestFile.downloadUrl,
-        downloadCount: data.downloadCount,
-        websiteUrl: data.websiteUrl
-    });
-    return latestFile.displayName;
-};
+const BASESTOREKEY = "addons.curseforge";
 
 const AddonSearch = props => {
     const [loading, setLoading] = useState(false);
     const refAddonList = useRef([]);
     const refSearchTimeout = useRef(null);
+    const gameVersion = useGameVersion();
 
     const customSearch = (e, { searchQuery }) => {
         if (searchQuery.length === 0) return;
@@ -65,7 +25,7 @@ const AddonSearch = props => {
         refSearchTimeout.current = setTimeout(() => {
             fetch(
                 "https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=1&gameVersion=" +
-                    GAMEVERSIONS[isClassic ? "classic" : "retail"] +
+                    gameVersion.version +
                     "&searchFilter=" +
                     searchQuery
             )
@@ -87,51 +47,75 @@ const AddonSearch = props => {
         }, 500);
     };
 
-    const switchVersion = () => {
-        isClassic = !isClassic;
-    };
-
     return (
-        <Grid>
-            <Grid.Column width={14} textAlign="center" verticalAlign="middle">
-                <Dropdown
-                    fluid
-                    selection
-                    search
-                    onSearchChange={customSearch}
-                    loading={loading}
-                    placeholder="Search addon"
-                    options={refAddonList.current}
-                    onChange={(_, { value }) => checkForUpdate(value, null)}
-                    selectOnBlur={false}
-                    selectOnNavigation={false}
-                />
-            </Grid.Column>
-            <Grid.Column width={2} textAlign="center" verticalAlign="middle">
-                <Checkbox toggle onChange={() => switchVersion()} />
-                <br />
-                {isClassic ? "Classic" : "Retail"}
-            </Grid.Column>
-        </Grid>
+        <Dropdown
+            fluid
+            selection
+            search
+            onSearchChange={customSearch}
+            loading={loading}
+            placeholder="Search addon"
+            options={refAddonList.current}
+            onChange={(_, { value }) => props.checkForUpdate(value, null)}
+            selectOnBlur={false}
+            selectOnNavigation={false}
+        />
     );
 };
 
 export const CFTab = props => {
-    const [addons, setAddons] = useState(
-        Object.values(AddonStore.get(STOREKEY, {}))
-    );
+    const gameVersion = useGameVersion();
+    const [addons, setAddons] = useState([]);
+
+    const storeKey = [gameVersion.name, BASESTOREKEY].join(".");
 
     useEffect(() => {
         const stopListening = AddonStore.onDidChange(
-            STOREKEY,
+            storeKey,
             (newValue, oldValue) => setAddons(Object.values(newValue || {}))
         );
+        setAddons(Object.values(AddonStore.get(storeKey, [])));
         return () => stopListening();
-    }, []);
+    }, [storeKey]);
+
+    const checkForUpdate = async (id, currentVersion) => {
+        const response = await fetch(
+            "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
+        );
+        const data = await response.json();
+
+        // Pick only the latest file with the right game version
+        let latestFile = {};
+        const BreakException = {};
+        try {
+            data.latestFiles.reverse().forEach(file => {
+                file.gameVersion.forEach(version => {
+                    if (
+                        version.substring(0, 2) ===
+                        gameVersion.version.substring(0, 2)
+                    ) {
+                        latestFile = file;
+                        throw BreakException;
+                    }
+                });
+            });
+        } catch (e) {}
+
+        AddonStore.set(storeKey + "." + id, {
+            id: id,
+            name: data.name,
+            version: currentVersion,
+            latestVersion: latestFile.displayName,
+            downloadUrl: latestFile.downloadUrl,
+            downloadCount: data.downloadCount,
+            websiteUrl: data.websiteUrl
+        });
+        return latestFile.displayName;
+    };
 
     return (
         <Tab.Pane {...props}>
-            <AddonSearch />
+            <AddonSearch checkForUpdate={checkForUpdate} />
             <Table selectable celled>
                 <Table.Header>
                     <Table.Row>
@@ -148,7 +132,7 @@ export const CFTab = props => {
                         <Addon
                             key={addon.id}
                             {...addon}
-                            storeKey={STOREKEY}
+                            storeKey={storeKey}
                             checkForUpdate={checkForUpdate}
                         />
                     ))}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Grid, Input, Tab, Button, Message, Icon } from "semantic-ui-react";
 
-import { AddonStore } from "./utils";
+import { AddonStore, setGameVersion, useGameVersion } from "./utils";
 import { Options } from "./Options";
 import { CFTab } from "./curseforge/CurseForge";
 import { WITab } from "./wowinterface/WowInterface";
@@ -41,19 +41,45 @@ export const VersionCheck = () => {
     );
 };
 
+const VersionSwitch = () => {
+    const [freeze, setFreeze] = useState(false);
+    const gameVersion = useGameVersion();
+
+    const switchVersion = () => {
+        setFreeze(true);
+        const newVersion = gameVersion.name === "retail" ? "classic" : "retail";
+        setGameVersion(newVersion);
+        setTimeout(() => setFreeze(false), 500);
+    };
+
+    return (
+        <Button
+            basic
+            disabled={freeze}
+            color={gameVersion.color}
+            onClick={() => switchVersion()}
+            content={gameVersion.label}
+        />
+    );
+};
+
 const App = () => {
-    const [pathValue, setPathValue] = useState(AddonStore.get("path", ""));
+    const gameVersion = useGameVersion();
+    const [pathValue, setPathValue] = useState("");
 
     useEffect(() => {
-        // Listen to importation event
+        setPathValue(AddonStore.get([gameVersion.name, "path"].join("."), ""));
         const stopListening = AddonStore.onDidChange(
-            "path",
+            [gameVersion.name, "path"].join("."),
             (newValue, oldValue) => {
                 setPathValue(newValue);
             }
         );
         return () => stopListening();
-    }, []);
+    }, [gameVersion.name]);
+
+    const setPath = path =>
+        AddonStore.set([gameVersion.name, "path"].join("."), path);
 
     // Hide tabs until a folder is selected
     let panes = [];
@@ -75,7 +101,7 @@ const App = () => {
                 <Grid.Row>
                     <Grid>
                         <Grid.Column
-                            width={14}
+                            width={12}
                             textAlign="center"
                             verticalAlign="middle"
                         >
@@ -87,7 +113,7 @@ const App = () => {
                             />
                         </Grid.Column>
                         <Grid.Column
-                            width={2}
+                            width={4}
                             textAlign="center"
                             verticalAlign="middle"
                         >
@@ -99,13 +125,12 @@ const App = () => {
                                         const path = dialog.showOpenDialogSync({
                                             properties: ["openDirectory"]
                                         });
-                                        if (path) {
-                                            AddonStore.set("path", path[0]);
-                                        }
+                                        if (path) setPath(path[0]);
                                     }}
                                 />
                                 <Options />
                             </Button.Group>
+                            <VersionSwitch />
                         </Grid.Column>
                     </Grid>
                 </Grid.Row>

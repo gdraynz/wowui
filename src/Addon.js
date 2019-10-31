@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Button, Icon } from "semantic-ui-react";
 
-import { AddonStore } from "./utils";
+import { AddonStore, useGameVersion } from "./utils";
 
 // Stuff to download/extract zip sequentially
 const ipcRenderer = window.require("electron").ipcRenderer;
@@ -16,6 +16,7 @@ const InstallButton = props => {
     const [loading, setLoading] = useState(props.loading);
     const [disabled, setDisabled] = useState(false);
     const { id, version, latestVersion, downloadUrl } = props.addon;
+    const gameVersion = useGameVersion();
 
     useEffect(() => {
         // Disable install buttons while a download is in progress
@@ -33,7 +34,7 @@ const InstallButton = props => {
     const install = () => {
         AddonStore.set(downloadKey, true);
         setLoading(true);
-        const path = AddonStore.get("path");
+        const path = AddonStore.get([gameVersion.name, "path"].join("."));
         ipcRenderer.send("download", {
             url: downloadUrl,
             properties: { directory: path }
@@ -73,6 +74,8 @@ const InstallButton = props => {
 };
 
 export const Addon = props => {
+    const gameVersion = useGameVersion();
+    const addonGameVersion = useRef(gameVersion.name);
     const [loading, setLoading] = useState(false);
     const [version, setVersion] = useState(props.version);
     const refLatestVersion = useRef(null);
@@ -93,13 +96,13 @@ export const Addon = props => {
     }, [props.storeKey, props.id]);
 
     useEffect(() => {
+        // Bail out if the game version is not right
+        if (addonGameVersion.current !== gameVersion.name) return;
         if (
             // Name is undefined in case of an Import
             !props.name ||
             // No version known, fetch the latest
-            !refLatestVersion.current ||
-            // Version is the latest, check if a new one exists
-            version === refLatestVersion.current
+            !refLatestVersion.current
         ) {
             setLoading(true);
             checkForUpdate(props.id, version).then(v => {
@@ -107,7 +110,7 @@ export const Addon = props => {
                 setLoading(false);
             });
         }
-    }, [checkForUpdate, props.id, props.name, version]);
+    }, [gameVersion.name, checkForUpdate, props.id, props.name, version]);
 
     return (
         <Table.Row>
