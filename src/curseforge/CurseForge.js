@@ -101,7 +101,7 @@ export const CFTab = props => {
             });
         } catch (e) {}
 
-        AddonStore.set(storeKey + "." + id, {
+        AddonStore.set([storeKey, id].join("."), {
             id: id,
             name: data.name,
             version: currentVersion,

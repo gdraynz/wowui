@@ -4,7 +4,8 @@ const Store = window.require("electron-store");
 export const AddonStore = new Store();
 
 const VERSIONSTOREKEY = "gameVersion";
-const availableGameVersions = {
+
+export const availableGameVersions = {
     classic: {
         name: "classic",
         label: "Classic",

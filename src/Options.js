@@ -8,24 +8,32 @@ import {
     Button
 } from "semantic-ui-react";
 
-import { AddonStore } from "./utils";
+import { AddonStore, availableGameVersions } from "./utils";
 
 const ExportOption = () => {
     const [exportValue, setExportValue] = useState("");
 
     const exportStore = () => {
-        const addons = AddonStore.get("addons");
         const sites = [];
-        if (addons.curseforge)
-            sites.push(
-                "curseforge:" + Object.keys(addons.curseforge).join(",")
-            );
-        if (addons.wowinterface)
-            sites.push(
-                "wowinterface:" + Object.keys(addons.wowinterface).join(",")
-            );
-        if (addons.tukui)
-            sites.push("tukui:" + Object.keys(addons.tukui).join(","));
+        Object.keys(availableGameVersions).forEach(key => {
+            const addons = AddonStore.get([key, "addons"].join("."));
+            if (addons && addons.curseforge)
+                sites.push(
+                    key +
+                        ":curseforge:" +
+                        Object.keys(addons.curseforge).join(",")
+                );
+            if (addons && addons.wowinterface)
+                sites.push(
+                    key +
+                        ":wowinterface:" +
+                        Object.keys(addons.wowinterface).join(",")
+                );
+            if (addons && addons.tukui)
+                sites.push(
+                    key + ":tukui:" + Object.keys(addons.tukui).join(",")
+                );
+        });
         setExportValue(btoa(sites.join("|")));
     };
 
@@ -56,15 +64,23 @@ const ImportOption = () => {
     const importStore = () => {
         const string = atob(refValue.current);
         const values = string.split("|");
-        AddonStore.delete("addons");
+
+        Object.keys(availableGameVersions).forEach(key =>
+            AddonStore.delete([key, "addons"].join("."))
+        );
+
         values.map(item => {
+            /*
+             * Split into:
+             * <version>:<site>:<addon1>,<addon2>,...
+             */
             const data = item.split(":");
             const addons = {};
-            data[1].split(",").map(id => {
+            data[2].split(",").map(id => {
                 addons[id] = { id: id };
                 return null;
             });
-            AddonStore.set("addons." + data[0], addons);
+            AddonStore.set([data[0], "addons", data[1]].join("."), addons);
             return null;
         });
         setOpened(false);
@@ -104,7 +120,9 @@ const ResetOption = () => {
     const [opened, setOpened] = useState(false);
 
     const resetData = () => {
-        AddonStore.delete("addons");
+        Object.keys(availableGameVersions).forEach(key =>
+            AddonStore.delete([key, "addons"].join("."))
+        );
         setOpened(false);
     };
 
@@ -143,3 +161,7 @@ export const Options = () => {
         </Dropdown>
     );
 };
+
+/*
+Y2xhc3NpYzpjdXJzZWZvcmdlOjMyNzc2NXxjbGFzc2ljOndvd2ludGVyZmFjZTozODk2LDU1NDF8Y2xhc3NpYzp0dWt1aToyMywyNnxyZXRhaWw6Y3Vyc2Vmb3JnZTp8cmV0YWlsOnR1a3VpOjM0
+*/

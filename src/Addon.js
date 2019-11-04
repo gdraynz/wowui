@@ -101,7 +101,7 @@ export const Addon = props => {
         if (
             // Name is undefined in case of an Import
             !props.name ||
-            // No version known, fetch the latest
+            // Unknown latest version, try and fetch it
             !refLatestVersion.current
         ) {
             setLoading(true);

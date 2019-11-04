@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
