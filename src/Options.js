@@ -10,29 +10,29 @@ import {
 
 import { AddonStore, availableGameVersions } from "./utils";
 
+const SITENAMES = ["curseforge", "wowinterface", "tukui"];
+
 const ExportOption = () => {
     const [exportValue, setExportValue] = useState("");
 
     const exportStore = () => {
         const sites = [];
-        Object.keys(availableGameVersions).forEach(key => {
-            const addons = AddonStore.get([key, "addons"].join("."));
-            if (addons && addons.curseforge)
-                sites.push(
-                    key +
-                        ":curseforge:" +
-                        Object.keys(addons.curseforge).join(",")
-                );
-            if (addons && addons.wowinterface)
-                sites.push(
-                    key +
-                        ":wowinterface:" +
-                        Object.keys(addons.wowinterface).join(",")
-                );
-            if (addons && addons.tukui)
-                sites.push(
-                    key + ":tukui:" + Object.keys(addons.tukui).join(",")
-                );
+        Object.keys(availableGameVersions).forEach(version => {
+            const addons = AddonStore.get([version, "addons"].join("."));
+            SITENAMES.forEach(site => {
+                if (
+                    addons &&
+                    addons[site] &&
+                    Object.keys(addons[site]).length > 0
+                )
+                    sites.push(
+                        [
+                            version,
+                            site,
+                            Object.keys(addons[site]).join(",")
+                        ].join(":")
+                    );
+            });
         });
         setExportValue(btoa(sites.join("|")));
     };
