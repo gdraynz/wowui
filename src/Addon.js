@@ -1,38 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Button, Icon } from "semantic-ui-react";
 
-import { AddonStore, useGameVersion } from "./utils";
+import { AddonStore, useGameVersion, useDownloadInProgress } from "./utils";
 
 // Stuff to download/extract zip sequentially
 const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
 const extract = window.require("extract-zip");
-const downloadKey = "downloadInProgress";
 
 const numberWithSpaces = s =>
     s ? s.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "";
 
 const InstallButton = props => {
     const [loading, setLoading] = useState(props.loading);
-    const [disabled, setDisabled] = useState(false);
     const { id, version, latestVersion, downloadUrl } = props.addon;
     const gameVersion = useGameVersion();
-
-    useEffect(() => {
-        // Disable install buttons while a download is in progress
-        const stopListening = AddonStore.onDidChange(
-            downloadKey,
-            (newValue, oldValue) => setDisabled(newValue)
-        );
-        return () => stopListening();
-    }, []);
+    const download = useDownloadInProgress();
 
     useEffect(() => {
         setLoading(props.loading);
     }, [props.loading]);
 
     const install = () => {
-        AddonStore.set(downloadKey, true);
+        download.start();
         setLoading(true);
         const path = AddonStore.get([gameVersion.name, "path"].join("."));
         ipcRenderer.send("download", {
@@ -49,7 +39,7 @@ const InstallButton = props => {
                     latestVersion
                 );
                 setLoading(props.loading);
-                AddonStore.set(downloadKey, false);
+                download.end();
             });
         });
     };
@@ -59,7 +49,7 @@ const InstallButton = props => {
     return (
         <Button
             color={needsUpdate ? "green" : "blue"}
-            disabled={loading || disabled}
+            disabled={loading || download.inProgress}
             loading={loading}
             onClick={() => install()}
         >

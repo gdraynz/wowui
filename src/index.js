@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import "semantic-ui-css/semantic.min.css";
 
 import App from "./App";
-import { AddonStore, getGameVersion, setGameVersion } from "./utils";
+import { GameVersionProvider, DownloadProvider } from "./utils";
 
 const shell = window.require("electron").shell;
 
@@ -18,22 +18,11 @@ document.addEventListener("click", event => {
 	}
 });
 
-// XXX: Game version migration step
-const gameVersionMigration = () => {
-	const oldPath = AddonStore.get("path");
-	if (oldPath) {
-		AddonStore.set("classic.path", oldPath);
-		AddonStore.delete("path");
-	}
-	const oldAddons = AddonStore.get("addons");
-	if (oldAddons) {
-		AddonStore.set("classic.addons", oldAddons);
-		AddonStore.delete("addons");
-	}
-	if (!getGameVersion()) {
-		setGameVersion("classic");
-	}
-};
-
-gameVersionMigration();
-ReactDOM.render(<App />, document.getElementById("root"));
+ReactDOM.render(
+	<DownloadProvider>
+		<GameVersionProvider>
+			<App />
+		</GameVersionProvider>
+	</DownloadProvider>,
+	document.getElementById("root")
+);

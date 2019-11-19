@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Grid, Input, Tab, Button, Message, Icon } from "semantic-ui-react";
 
-import { AddonStore, setGameVersion, useGameVersion } from "./utils";
+import { AddonStore, useGameVersion } from "./utils";
 import { Options } from "./Options";
 import { CFTab } from "./curseforge/CurseForge";
 import { WITab } from "./wowinterface/WowInterface";
@@ -48,7 +48,7 @@ const VersionSwitch = () => {
     const switchVersion = () => {
         setFreeze(true);
         const newVersion = gameVersion.name === "retail" ? "classic" : "retail";
-        setGameVersion(newVersion);
+        gameVersion.changeTo(newVersion);
         setTimeout(() => setFreeze(false), 500);
     };
 
