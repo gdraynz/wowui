@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Table, Button, Icon } from "semantic-ui-react";
 
 import { AddonStore, useGameVersion, useDownloadInProgress } from "./utils";
@@ -8,10 +8,10 @@ const ipcRenderer = window.require("electron").ipcRenderer;
 const fs = window.require("fs");
 const extract = window.require("extract-zip");
 
-const numberWithSpaces = s =>
+const numberWithSpaces = (s) =>
     s ? s.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "";
 
-const InstallButton = props => {
+const InstallButton = (props) => {
     const [loading, setLoading] = useState(props.loading);
     const { id, version, latestVersion, downloadUrl } = props.addon;
     const gameVersion = useGameVersion();
@@ -21,28 +21,38 @@ const InstallButton = props => {
         setLoading(props.loading);
     }, [props.loading]);
 
-    const install = () => {
+    const install = useCallback(() => {
         download.start();
         setLoading(true);
         const path = AddonStore.get([gameVersion.name, "path"].join("."));
         ipcRenderer.send("download", {
             url: downloadUrl,
-            properties: { directory: path }
+            properties: { directory: path },
         });
-        ipcRenderer.once("download complete", (event, file) => {
-            extract(file, { dir: path }, err => {
-                if (err) console.log(err);
-                // Silently remove zip file
-                fs.unlink(file, err => (err ? console.log(err) : ""));
-                AddonStore.set(
-                    [props.storeKey, id, "version"].join("."),
-                    latestVersion
-                );
-                setLoading(props.loading);
-                download.end();
-            });
+        ipcRenderer.once("download complete", async (event, file) => {
+            try {
+                await extract(file, { dir: path });
+            } catch (err) {
+                console.error(err);
+            }
+            // Silently remove zip file
+            fs.unlink(file, (err) => (err ? console.log(err) : ""));
+            AddonStore.set(
+                [props.storeKey, id, "version"].join("."),
+                latestVersion
+            );
+            setLoading(props.loading);
+            download.end();
         });
-    };
+    }, [
+        download,
+        downloadUrl,
+        gameVersion.name,
+        id,
+        latestVersion,
+        props.loading,
+        props.storeKey,
+    ]);
 
     const needsUpdate = version !== latestVersion;
 
@@ -63,7 +73,7 @@ const InstallButton = props => {
     );
 };
 
-export const Addon = props => {
+export const Addon = (props) => {
     const gameVersion = useGameVersion();
     const addonGameVersion = useRef(gameVersion.name);
     const [loading, setLoading] = useState(false);
@@ -95,7 +105,7 @@ export const Addon = props => {
             !refLatestVersion.current
         ) {
             setLoading(true);
-            checkForUpdate(props.id, version).then(v => {
+            checkForUpdate(props.id, version).then((v) => {
                 refLatestVersion.current = v;
                 setLoading(false);
             });
@@ -137,7 +147,7 @@ export const Addon = props => {
                         id: props.id,
                         version: version,
                         latestVersion: refLatestVersion.current,
-                        downloadUrl: props.downloadUrl
+                        downloadUrl: props.downloadUrl,
                     }}
                     loading={loading}
                 />

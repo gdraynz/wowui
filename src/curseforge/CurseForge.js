@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Table, Dropdown, Tab } from "semantic-ui-react";
 
 import { Addon } from "../Addon";
@@ -11,41 +11,45 @@ Unofficial twitch api doc:
 
 const BASESTOREKEY = "addons.curseforge";
 
-const AddonSearch = props => {
+const AddonSearch = (props) => {
     const [loading, setLoading] = useState(false);
     const refAddonList = useRef([]);
     const refSearchTimeout = useRef(null);
     const gameVersion = useGameVersion();
 
-    const customSearch = (e, { searchQuery }) => {
-        if (searchQuery.length === 0) return;
-        if (refAddonList.current.length > 0 && searchQuery.length > 4) return;
-        setLoading(true);
-        clearTimeout(refSearchTimeout.current);
-        refSearchTimeout.current = setTimeout(() => {
-            fetch(
-                "https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=1&gameVersion=" +
-                    gameVersion.version +
-                    "&searchFilter=" +
-                    searchQuery
-            )
-                .then(response => response.json())
-                .then(
-                    data =>
-                        (refAddonList.current = data.map(addon => ({
-                            key: addon.id,
-                            value: addon.id,
-                            text: addon.name,
-                            description: addon.summary
-                        })))
+    const customSearch = useCallback(
+        (e, { searchQuery }) => {
+            if (searchQuery.length === 0) return;
+            if (refAddonList.current.length > 0 && searchQuery.length > 4)
+                return;
+            setLoading(true);
+            clearTimeout(refSearchTimeout.current);
+            refSearchTimeout.current = setTimeout(() => {
+                fetch(
+                    "https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=1&gameVersion=" +
+                        gameVersion.version +
+                        "&searchFilter=" +
+                        searchQuery
                 )
-                .then(() => {
-                    clearTimeout(refSearchTimeout.current);
-                    refSearchTimeout.current = null;
-                    setLoading(false);
-                });
-        }, 500);
-    };
+                    .then((response) => response.json())
+                    .then(
+                        (data) =>
+                            (refAddonList.current = data.map((addon) => ({
+                                key: addon.id,
+                                value: addon.id,
+                                text: addon.name,
+                                description: addon.summary,
+                            })))
+                    )
+                    .then(() => {
+                        clearTimeout(refSearchTimeout.current);
+                        refSearchTimeout.current = null;
+                        setLoading(false);
+                    });
+            }, 500);
+        },
+        [gameVersion.version]
+    );
 
     return (
         <Dropdown
@@ -63,7 +67,7 @@ const AddonSearch = props => {
     );
 };
 
-export const CFTab = props => {
+export const CFTab = (props) => {
     const gameVersion = useGameVersion();
     const [addons, setAddons] = useState([]);
 
@@ -78,40 +82,43 @@ export const CFTab = props => {
         return () => stopListening();
     }, [storeKey]);
 
-    const checkForUpdate = async (id, currentVersion) => {
-        const response = await fetch(
-            "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
-        );
-        const data = await response.json();
+    const checkForUpdate = useCallback(
+        async (id, currentVersion) => {
+            const response = await fetch(
+                "https://addons-ecs.forgesvc.net/api/v2/addon/" + id
+            );
+            const data = await response.json();
 
-        // Pick only the latest file with the right game version
-        let latestFile = {};
-        const BreakException = {};
-        try {
-            data.latestFiles.reverse().forEach(file => {
-                file.gameVersion.forEach(version => {
-                    if (
-                        version.substring(0, 2) ===
-                        gameVersion.version.substring(0, 2)
-                    ) {
-                        latestFile = file;
-                        throw BreakException;
-                    }
+            // Pick only the latest file with the right game version
+            let latestFile = {};
+            const BreakException = {};
+            try {
+                data.latestFiles.reverse().forEach((file) => {
+                    file.gameVersion.forEach((version) => {
+                        if (
+                            version.substring(0, 2) ===
+                            gameVersion.version.substring(0, 2)
+                        ) {
+                            latestFile = file;
+                            throw BreakException;
+                        }
+                    });
                 });
-            });
-        } catch (e) {}
+            } catch (e) {}
 
-        AddonStore.set([storeKey, id].join("."), {
-            id: id,
-            name: data.name,
-            version: currentVersion,
-            latestVersion: latestFile.displayName,
-            downloadUrl: latestFile.downloadUrl,
-            downloadCount: data.downloadCount,
-            websiteUrl: data.websiteUrl
-        });
-        return latestFile.displayName;
-    };
+            AddonStore.set([storeKey, id].join("."), {
+                id: id,
+                name: data.name,
+                version: currentVersion,
+                latestVersion: latestFile.displayName,
+                downloadUrl: latestFile.downloadUrl,
+                downloadCount: data.downloadCount,
+                websiteUrl: data.websiteUrl,
+            });
+            return latestFile.displayName;
+        },
+        [gameVersion.version, storeKey]
+    );
 
     return (
         <Tab.Pane {...props}>
@@ -128,7 +135,7 @@ export const CFTab = props => {
                     </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                    {addons.map(addon => (
+                    {addons.map((addon) => (
                         <Addon
                             key={addon.id}
                             {...addon}

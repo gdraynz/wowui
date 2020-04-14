@@ -10,7 +10,7 @@ const extract = window.require("extract-zip");
 
 const STOREKEY = "addons.github";
 
-const GithubLink = props => {
+const GithubLink = (props) => {
     const getAddonPath = () => {
         const path = AddonStore.get("path");
         const parts = props.link.split("/");
@@ -19,23 +19,23 @@ const GithubLink = props => {
     };
 
     const install = async () => {
-        const promise = new Promise(resolve => {
+        const promise = new Promise((resolve) => {
             const { path, addonPath } = getAddonPath();
             ipcRenderer.send("download", {
                 url: props.link + "/archive/master.zip",
-                properties: { directory: path }
+                properties: { directory: path },
             });
             ipcRenderer.once("download complete", (event, file) => {
                 // Remove old folder
                 rimraf(addonPath, () =>
                     // Extract zip
-                    extract(file, { dir: path }, err => {
+                    extract(file, { dir: path }, (err) => {
                         if (err) console.log(err);
                         // Cleanup
-                        fs.rename(addonPath + "-master", addonPath, e =>
+                        fs.rename(addonPath + "-master", addonPath, (e) =>
                             e ? console.log(e) : ""
                         );
-                        fs.unlink(file, e => (e ? console.log(e) : ""));
+                        fs.unlink(file, (e) => (e ? console.log(e) : ""));
                         resolve();
                     })
                 );
@@ -57,7 +57,7 @@ const GithubLink = props => {
                         AddonStore.set(STOREKEY, links);
                         // Remove the addon
                         const { addonPath } = getAddonPath();
-                        rimraf(addonPath, e => (e ? console.log(e) : ""));
+                        rimraf(addonPath, (e) => (e ? console.log(e) : ""));
                     }}
                 />
             </Grid.Column>
@@ -76,7 +76,7 @@ const GithubLink = props => {
     );
 };
 
-export const GithubTab = props => {
+export const GithubTab = (props) => {
     const [links, setLinks] = useState([]);
     const [linkValue, setLinkValue] = useState("");
     const enterPressed = useKeyPress("Enter");

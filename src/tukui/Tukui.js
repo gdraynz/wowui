@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Table, Dropdown, Tab } from "semantic-ui-react";
 import _ from "lodash";
 
@@ -7,13 +7,13 @@ import { AddonStore, useGameVersion } from "../utils";
 
 const BASESTOREKEY = "addons.tukui";
 
-const AddonSearch = props => {
+const AddonSearch = (props) => {
     const customSearch = (options, query) => {
         if (query.length < 2) {
             return [];
         }
         const re = new RegExp(_.escapeRegExp(query), "i");
-        return props.addonList.filter(item => re.test(item.text));
+        return props.addonList.filter((item) => re.test(item.text));
     };
 
     return (
@@ -30,7 +30,7 @@ const AddonSearch = props => {
     );
 };
 
-export const TukuiTab = props => {
+export const TukuiTab = (props) => {
     const gameVersion = useGameVersion();
     const [addons, setAddons] = useState([]);
     const [addonList, setAddonList] = useState([]);
@@ -48,39 +48,42 @@ export const TukuiTab = props => {
                 (gameVersion.name === "classic" ? "classic-" : "") +
                 "addons=all"
         )
-            .then(response => response.json())
-            .then(data =>
+            .then((response) => response.json())
+            .then((data) =>
                 setAddonList(
-                    data.map(item => ({
+                    data.map((item) => ({
                         key: item.id,
                         value: item.id,
                         text: item.name,
-                        description: item.small_desc
+                        description: item.small_desc,
                     }))
                 )
             );
         return () => stopListening();
     }, [gameVersion.name, storeKey]);
 
-    const checkForUpdate = async (id, currentVersion) => {
-        const response = await fetch(
-            "https://www.tukui.org/api.php?" +
-                (gameVersion.name === "classic" ? "classic-" : "") +
-                "addon=" +
-                id
-        );
-        const addon = await response.json();
-        AddonStore.set([storeKey, id].join("."), {
-            id: id,
-            name: addon.name,
-            version: currentVersion,
-            latestVersion: addon.version,
-            downloadUrl: addon.url,
-            downloadCount: addon.downloads,
-            websiteUrl: addon.web_url
-        });
-        return addon.version;
-    };
+    const checkForUpdate = useCallback(
+        async (id, currentVersion) => {
+            const response = await fetch(
+                "https://www.tukui.org/api.php?" +
+                    (gameVersion.name === "classic" ? "classic-" : "") +
+                    "addon=" +
+                    id
+            );
+            const addon = await response.json();
+            AddonStore.set([storeKey, id].join("."), {
+                id: id,
+                name: addon.name,
+                version: currentVersion,
+                latestVersion: addon.version,
+                downloadUrl: addon.url,
+                downloadCount: addon.downloads,
+                websiteUrl: addon.web_url,
+            });
+            return addon.version;
+        },
+        [storeKey, gameVersion.name]
+    );
 
     return (
         addonList && (
@@ -101,7 +104,7 @@ export const TukuiTab = props => {
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
-                        {addons.map(addon => (
+                        {addons.map((addon) => (
                             <Addon
                                 key={addon.id}
                                 {...addon}

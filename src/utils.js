@@ -1,4 +1,10 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, {
+    useState,
+    useEffect,
+    createContext,
+    useContext,
+    useCallback,
+} from "react";
 const Store = window.require("electron-store");
 
 export const AddonStore = new Store();
@@ -10,14 +16,14 @@ export const availableGameVersions = {
         name: "classic",
         label: "Classic",
         version: "1.13.2",
-        color: "red"
+        color: "red",
     },
     retail: {
         name: "retail",
         label: "Retail",
-        version: "8.2.5",
-        color: "blue"
-    }
+        version: "8.3.0",
+        color: "blue",
+    },
 };
 
 const gameVersionContext = createContext();
@@ -58,10 +64,10 @@ const useProvideGameVersion = () => {
         }
     }, []);
 
-    const changeTo = name => {
+    const changeTo = useCallback((name) => {
         AddonStore.set(VERSIONSTOREKEY, name);
         setGameVersion(name);
-    };
+    }, []);
 
     const fullVersion = availableGameVersions[gameVersion];
     return {
@@ -69,7 +75,7 @@ const useProvideGameVersion = () => {
         label: fullVersion.label,
         version: fullVersion.version,
         color: fullVersion.color,
-        changeTo
+        changeTo,
     };
 };
 

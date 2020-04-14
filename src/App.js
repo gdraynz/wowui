@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Grid, Input, Tab, Button, Message, Icon } from "semantic-ui-react";
 
 import { AddonStore, useGameVersion } from "./utils";
@@ -16,8 +16,8 @@ export const VersionCheck = () => {
 
     useEffect(() => {
         fetch("https://api.github.com/repos/gdraynz/wowui/releases/latest")
-            .then(response => response.json())
-            .then(data => {
+            .then((response) => response.json())
+            .then((data) => {
                 if (data["tag_name"] !== app.getVersion()) {
                     setLatestVersion(data["tag_name"]);
                     setUrl(data["assets"][0]["browser_download_url"]);
@@ -45,12 +45,12 @@ const VersionSwitch = () => {
     const [freeze, setFreeze] = useState(false);
     const gameVersion = useGameVersion();
 
-    const switchVersion = () => {
+    const switchVersion = useCallback(() => {
         setFreeze(true);
         const newVersion = gameVersion.name === "retail" ? "classic" : "retail";
         gameVersion.changeTo(newVersion);
         setTimeout(() => setFreeze(false), 500);
-    };
+    }, [gameVersion]);
 
     return (
         <Button
@@ -78,8 +78,10 @@ const App = () => {
         return () => stopListening();
     }, [gameVersion.name]);
 
-    const setPath = path =>
-        AddonStore.set([gameVersion.name, "path"].join("."), path);
+    const setPath = useCallback(
+        (path) => AddonStore.set([gameVersion.name, "path"].join("."), path),
+        [gameVersion.name]
+    );
 
     // Hide tabs until a folder is selected
     let panes = [];
@@ -87,10 +89,10 @@ const App = () => {
         panes = [
             {
                 menuItem: "Curse Forge",
-                pane: <CFTab key="curseforge" />
+                pane: <CFTab key="curseforge" />,
             },
             { menuItem: "WoW Interface", pane: <WITab key="wowinterface" /> },
-            { menuItem: "Tukui/Elvui", pane: <TukuiTab key="tukui" /> }
+            { menuItem: "Tukui/Elvui", pane: <TukuiTab key="tukui" /> },
             // { menuItem: "Github", pane: <GithubTab key="github" /> }
         ];
 
@@ -123,7 +125,7 @@ const App = () => {
                                     icon="folder"
                                     onClick={() => {
                                         const path = dialog.showOpenDialogSync({
-                                            properties: ["openDirectory"]
+                                            properties: ["openDirectory"],
                                         });
                                         if (path) setPath(path[0]);
                                     }}

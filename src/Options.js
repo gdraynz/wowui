@@ -1,11 +1,11 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
     Dropdown,
     Icon,
     Modal,
     Form,
     TextArea,
-    Button
+    Button,
 } from "semantic-ui-react";
 
 import { AddonStore, availableGameVersions } from "./utils";
@@ -15,11 +15,11 @@ const SITENAMES = ["curseforge", "wowinterface", "tukui"];
 const ExportOption = () => {
     const [exportValue, setExportValue] = useState("");
 
-    const exportStore = () => {
+    const exportStore = useCallback(() => {
         const sites = [];
-        Object.keys(availableGameVersions).forEach(version => {
+        Object.keys(availableGameVersions).forEach((version) => {
             const addons = AddonStore.get([version, "addons"].join("."));
-            SITENAMES.forEach(site => {
+            SITENAMES.forEach((site) => {
                 if (
                     addons &&
                     addons[site] &&
@@ -29,13 +29,13 @@ const ExportOption = () => {
                         [
                             version,
                             site,
-                            Object.keys(addons[site]).join(",")
+                            Object.keys(addons[site]).join(","),
                         ].join(":")
                     );
             });
         });
         setExportValue(btoa(sites.join("|")));
-    };
+    }, []);
 
     return (
         <Modal
@@ -61,22 +61,22 @@ const ImportOption = () => {
     const [opened, setOpened] = useState(false);
     const refValue = useRef("");
 
-    const importStore = () => {
+    const importStore = useCallback(() => {
         const string = atob(refValue.current);
         const values = string.split("|");
 
-        Object.keys(availableGameVersions).forEach(key =>
+        Object.keys(availableGameVersions).forEach((key) =>
             AddonStore.delete([key, "addons"].join("."))
         );
 
-        values.map(item => {
+        values.map((item) => {
             /*
              * Split into:
              * <version>:<site>:<addon1>,<addon2>,...
              */
             const data = item.split(":");
             const addons = {};
-            data[2].split(",").map(id => {
+            data[2].split(",").map((id) => {
                 addons[id] = { id: id };
                 return null;
             });
@@ -84,7 +84,7 @@ const ImportOption = () => {
             return null;
         });
         setOpened(false);
-    };
+    }, []);
 
     const close = () => setOpened(false);
 
@@ -119,14 +119,14 @@ const ImportOption = () => {
 const ResetOption = () => {
     const [opened, setOpened] = useState(false);
 
-    const resetData = () => {
-        Object.keys(availableGameVersions).forEach(key =>
+    const resetData = useCallback(() => {
+        Object.keys(availableGameVersions).forEach((key) =>
             AddonStore.delete([key, "addons"].join("."))
         );
         setOpened(false);
-    };
+    }, []);
 
-    const close = () => setOpened(false);
+    const close = useCallback(() => setOpened(false), []);
 
     return (
         <React.Fragment>
@@ -161,7 +161,3 @@ export const Options = () => {
         </Dropdown>
     );
 };
-
-/*
-Y2xhc3NpYzpjdXJzZWZvcmdlOjMyNzc2NXxjbGFzc2ljOndvd2ludGVyZmFjZTozODk2LDU1NDF8Y2xhc3NpYzp0dWt1aToyMywyNnxyZXRhaWw6Y3Vyc2Vmb3JnZTp8cmV0YWlsOnR1a3VpOjM0
-*/
