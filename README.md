@@ -11,6 +11,6 @@ Shamelessly pulls data from multiple WoW addon websites to search and install ad
 ## dev
 
 ```
-yarn
-yarn electron-dev
+npm i
+npm run electron-dev
 ```

@@ -5,15 +5,15 @@
     "homepage": "./",
     "main": "public/electron.js",
     "dependencies": {
-        "electron-dl": "^2.0.0",
-        "electron-is-dev": "^1.1.0",
-        "electron-store": "^5.1.0",
-        "extract-zip": "^1.6.7",
+        "electron-dl": "^3.0.0",
+        "electron-is-dev": "^1.2.0",
+        "electron-store": "^5.1.1",
+        "extract-zip": "^2.0.0",
         "lodash": "^4.17.15",
-        "react": "^16.12.0",
-        "react-dom": "^16.12.0",
-        "react-scripts": "^3.0.0",
-        "rimraf": "^3.0.0",
+        "react": "^16.13.1",
+        "react-dom": "^16.13.1",
+        "react-scripts": "^3.4.1",
+        "rimraf": "^3.0.2",
         "semantic-ui-css": "^2.4.1",
         "semantic-ui-react": "^0.88.2"
     },
@@ -22,9 +22,9 @@
         "build": "react-scripts build",
         "test": "react-scripts test",
         "eject": "react-scripts eject",
-        "electron-dev": "concurrently \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
+        "electron-dev": "concurrently \"BROWSER=none npm run start\" \"wait-on http://localhost:3000 && electron .\"",
         "postinstall": "electron-builder install-app-deps",
-        "preelectron-pack": "yarn build",
+        "preelectron-pack": "npm run build",
         "electron-pack": "electron-builder -w"
     },
     "eslintConfig": {
@@ -37,11 +37,11 @@
         "not op_mini all"
     ],
     "devDependencies": {
-        "concurrently": "^5.0.1",
-        "electron": "^7.1.4",
-        "electron-builder": "^22.2.0",
-        "typescript": "^3.7.3",
-        "wait-on": "^3.3.0"
+        "concurrently": "^5.1.0",
+        "electron": "^8.2.2",
+        "electron-builder": "^22.4.1",
+        "typescript": "^3.8.3",
+        "wait-on": "^4.0.2"
     },
     "author": {
         "name": "gdraynz",
