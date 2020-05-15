@@ -1,6 +1,6 @@
 {
     "name": "wowui",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "private": true,
     "homepage": "./",
     "main": "public/electron.js",
@@ -25,7 +25,7 @@
         "electron-dev": "concurrently \"BROWSER=none npm run start\" \"wait-on http://localhost:3000 && electron .\"",
         "postinstall": "electron-builder install-app-deps",
         "preelectron-pack": "npm run build",
-        "electron-pack": "electron-builder -w"
+        "electron-pack": "electron-builder -wl"
     },
     "eslintConfig": {
         "extends": "react-app"
@@ -37,11 +37,11 @@
         "not op_mini all"
     ],
     "devDependencies": {
-        "concurrently": "^5.1.0",
-        "electron": "^8.2.2",
-        "electron-builder": "^22.4.1",
-        "typescript": "^3.8.3",
-        "wait-on": "^4.0.2"
+        "concurrently": "^5.2.0",
+        "electron": "^8.3.0",
+        "electron-builder": "^22.6.0",
+        "typescript": "^3.9.2",
+        "wait-on": "^5.0.0"
     },
     "author": {
         "name": "gdraynz",

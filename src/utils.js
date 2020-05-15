@@ -15,7 +15,7 @@ export const availableGameVersions = {
     classic: {
         name: "classic",
         label: "Classic",
-        version: "1.13.2",
+        version: "1.13.4",
         color: "red",
     },
     retail: {
@@ -43,26 +43,6 @@ export const useGameVersion = () => {
 
 const useProvideGameVersion = () => {
     const [gameVersion, setGameVersion] = useState("classic");
-
-    useEffect(() => {
-        // XXX: 1.x => 2.x migration
-        const oldPath = AddonStore.get("path");
-        if (oldPath) {
-            AddonStore.set("classic.path", oldPath);
-            AddonStore.delete("path");
-        }
-        const oldAddons = AddonStore.get("addons");
-        if (oldAddons) {
-            AddonStore.set("classic.addons", oldAddons);
-            AddonStore.delete("addons");
-        }
-        const lastVersionUsed = AddonStore.get(VERSIONSTOREKEY);
-        if (!lastVersionUsed) {
-            AddonStore.set(VERSIONSTOREKEY, "classic");
-        } else {
-            setGameVersion(lastVersionUsed.name || lastVersionUsed);
-        }
-    }, []);
 
     const changeTo = useCallback((name) => {
         AddonStore.set(VERSIONSTOREKEY, name);
