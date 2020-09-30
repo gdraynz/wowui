@@ -14,3 +14,7 @@ Shamelessly pulls data from multiple WoW addon websites to search and install ad
 npm i
 npm run electron-dev
 ```
+
+## Maintenance
+
+As I play WoW pretty much on and off I may not be able to maintain this properly, please consider looking at [other addon managers](https://ogri-la.github.io/wow-addon-managers/).
